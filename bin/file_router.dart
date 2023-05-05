@@ -95,44 +95,56 @@ class PathParts {
   }
 }
 
-void createRoute(BuildContext context, Directory dir) {
-  final base = basename(dir.path);
-  var shouldClose = false;
-  if (base.startsWith("{")) {
-    assert(base.endsWith("}"));
-    final shellName = "${base.substring(1, base.length - 1).capitalize()}Shell";
-    final file = File(join(dir.path, "{shell}.dart"));
-    if (!file.existsSync()) {
-      throw ShellFileDoesNotExist();
-    }
-    context.imports += context.getFileImport(file);
-    context.router += """
-ShellRoute(
-  builder: (BuildContext context, GoRouterState state, Widget child){
-    return $shellName(child: child);
+bool maybeAddShell(BuildContext context, Directory dir) {
+  final shellDirName = basename(dir.path);
+  final shellFile = File(join(dir.path, "{shell}.dart"));
+  final shellFileExists = shellFile.existsSync();
+  if (!shellDirName.startsWith("{") && !(shellDirName == "lib" && shellFileExists)) {
+    return false;
+  }
+  assert(!shellDirName.startsWith("{") || shellDirName.endsWith("}"));
+  if (!shellFileExists) {
+    throw ShellFileDoesNotExist();
+  }
+  final String shellName;
+  if (shellDirName == "lib") {
+    shellName = "RootShell";
+  } else {
+    shellName = "${shellDirName.substring(1, shellDirName.length - 1).capitalize()}Shell";
+  }
+  context.imports += context.getFileImport(shellFile);
+  context.router += """
+base.ShellRoute(
+  builder: (BuildContext context, base.GoRouterState state, Widget child){
+    return $shellName(child);
   },
   routes: [
 """;
-    shouldClose = true;
+  return true;
+}
+
+void createRoute(BuildContext context, Directory dir) {
+  final base = basename(dir.path);
+  final addedShell = maybeAddShell(context, dir);
+  var addedPage = false;
+  if (base == "lib") {
+    context.pathParts.push(const RawPathPart("/"));
+  } else if (base.startsWith("+")) {
+    context.pathParts.push(RawPathPart(base.substring(1)));
   } else {
-    if (base == "lib") {
-      context.pathParts.push(const RawPathPart("/"));
-    } else if (base.startsWith("+")) {
-      context.pathParts.push(RawPathPart(base.substring(1)));
-    } else {
-      assert(base.startsWith("[") && base.endsWith("]"));
-      final withoutBraces = base.substring(1, base.length - 1);
-      context.pathParts.push(UrlParam(extractParamInfo(withoutBraces, base)));
-    }
-    final file = dir.listSync().whereType<File?>().singleWhere(
-          (file) => basename(file!.path).startsWith("+"),
-          orElse: () => null,
-        );
-    if (file != null) {
-      createPage(file, context);
-      shouldClose = true;
-    }
+    assert(base.startsWith("[") && base.endsWith("]"));
+    final withoutBraces = base.substring(1, base.length - 1);
+    context.pathParts.push(UrlParam(extractParamInfo(withoutBraces, base)));
   }
+  final file = dir.listSync().whereType<File?>().singleWhere(
+        (file) => basename(file!.path).startsWith("+"),
+        orElse: () => null,
+      );
+  if (file != null) {
+    createPage(file, context);
+    addedPage = true;
+  }
+
   Iterable<Directory> subroutes = dir.listSync().whereType<Directory>().where(
         (directory) => basename(directory.path).startsWith(RegExp(r'[\[\{\+]')),
       );
@@ -140,12 +152,15 @@ ShellRoute(
     createRoute(context, route);
   }
   context.pathParts.pop();
-  if (shouldClose) {
+  if (addedShell || addedPage) {
     context.router = context.router.trimRight();
     if (context.router.endsWith("routes: [")) {
       context.router = context.router.substring(0, context.router.length - 9);
       context.router += "),";
     } else {
+      context.router += "],),";
+    }
+    if (addedShell && addedPage) {
       context.router += "],),";
     }
   }
