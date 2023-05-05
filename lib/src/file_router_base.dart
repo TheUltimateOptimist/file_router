@@ -94,6 +94,18 @@ abstract class StatefulPage<T extends Route> extends StatefulWidget {
   final T route;
 }
 
+abstract class StatelessShell extends StatelessWidget {
+  const StatelessShell(this.child, {super.key});
+
+  final Widget child;
+}
+
+abstract class StatefulShell extends StatefulWidget {
+  const StatefulShell(this.child, {super.key});
+
+  final Widget child;
+}
+
 abstract class Converter<T> {
   String toUrlEncoding(T data);
   T fromUrlEncoding(String data);
@@ -129,7 +141,8 @@ class BoolConverter implements Converter<bool> {
     } else if (data == "false") {
       return false;
     }
-    throw Exception("to convert from string to bool the string must be true or false");
+    throw Exception(
+        "to convert from string to bool the string must be true or false");
   }
 
   @override
