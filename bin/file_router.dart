@@ -88,6 +88,13 @@ class PathParts {
     return "/${_parts.skip(1).map((e) => e is UrlParam ? "\$${e.paramInfo.name}Value" : e.url).join("/")}";
   }
 
+  String get path { 
+    if (_parts.length == 1) {
+      return "/";
+    }
+    return "/${_parts.skip(1).map((e) => e.url).join("/")}";
+  }
+
   String get goRoutePath {
     final result = _danglingParts.map((e) => e.url).join("/");
     _danglingParts.clear();
@@ -355,6 +362,11 @@ class ${pageName}Route implements base.Route {
   Object? get extra => ${extraParam != null ? extraParam.paramInfo.name : 'null'};
 }
 """;
+  context.currentIs += """
+if (T == ${pageName}Route) {
+  return base.isAPair('${context.pathParts.path}', location);
+}  
+""";
   context.imports += context.getFileImport(page);
   context.router += """
 base.GoRoute(
@@ -454,17 +466,20 @@ class BuildContext {
     this.router,
     this.routes,
     this.imports,
+    this.currentIs,
     this.pathParts,
   );
   final String projectName;
   String router;
   String routes;
   String imports;
+  String currentIs;
   final PathParts pathParts;
 
   factory BuildContext.initial() {
     return BuildContext(
       basename(Directory.current.path),
+      "",
       "",
       "",
       "",
@@ -493,8 +508,16 @@ const String_converter = base.StringConverter();
 const bool_converter = base.BoolConverter();
 const double_converter = base.DoubleConverter();
 
-final routerData = base.FileRouterData(routes: [
-  $router],);
+bool currentIs<T extends base.Route>(String location) {
+  location = location.split("?")[0];
+  $currentIs
+  throw Exception("Route detection failure");
+}
+
+final routerData = base.FileRouterData(
+  currentIs: currentIs,
+  routes: [
+    $router],);
 """;
   }
 

@@ -29,6 +29,10 @@ class FileRouter extends GoRouter {
 
   final FileRouterData data;
   final Route initialRoute;
+  
+  bool currentIs<T extends Route>() { 
+    return data.currentIs<T>(location);
+  }
 
   void goRoute<R extends Route>(R route) {
     go(route.location, extra: route.extra);
@@ -67,11 +71,14 @@ extension FileRouterExtension on BuildContext {
   void replaceRoute<R extends Route>(R route) {
     FileRouter.of(this).replaceRoute(route);
   }
+
+  bool currentIs<T extends Route>() => FileRouter.of(this).currentIs<T>(); 
 }
 
 class FileRouterData {
   const FileRouterData({
     required this.routes,
+    required this.currentIs,
     this.errorBuilder,
     this.errorPageBuilder,
     this.redirect,
@@ -80,6 +87,7 @@ class FileRouterData {
   final Widget Function(BuildContext, GoRouterState)? errorBuilder;
   final Page<dynamic> Function(BuildContext, GoRouterState)? errorPageBuilder;
   final FutureOr<String?> Function(BuildContext, GoRouterState)? redirect;
+  final bool Function<T extends Route>(String) currentIs;
 }
 
 abstract class StatelessPage<T extends Route> extends StatelessWidget {
@@ -158,3 +166,29 @@ class StringConverter implements Converter<String> {
   @override
   String toUrlEncoding(String data) => data;
 }
+
+
+bool isAPair(String route, String location) {
+  route = route.substring(1);
+  location = location.substring(1);
+  print("ksjdfj");
+  if (route.isEmpty && location.isEmpty) {
+    return true;
+  }
+  final routeParts = route.split('/');
+  final locationParts = location.split('/');
+  print(routeParts);
+  print(locationParts);
+  for (int i = 0; i < locationParts.length; i++) {
+    if (i >= routeParts.length) {
+      return false;   
+    }
+   final locationPart = locationParts[i];
+   final routePart = routeParts[i];
+   if (!routePart.startsWith(":") && routePart != locationPart) {
+     return false; 
+   }
+  }
+  return true;
+}
+
