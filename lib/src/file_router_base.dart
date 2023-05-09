@@ -29,8 +29,8 @@ class FileRouter extends GoRouter {
 
   final FileRouterData data;
   final Route initialRoute;
-  
-  bool currentIs<T extends Route>() { 
+
+  bool currentIs<T extends Route>() {
     return data.currentIs<T>(location);
   }
 
@@ -72,7 +72,7 @@ extension FileRouterExtension on BuildContext {
     FileRouter.of(this).replaceRoute(route);
   }
 
-  bool currentIs<T extends Route>() => FileRouter.of(this).currentIs<T>(); 
+  bool currentIs<T extends Route>() => FileRouter.of(this).currentIs<T>();
 }
 
 class FileRouterData {
@@ -167,7 +167,6 @@ class StringConverter implements Converter<String> {
   String toUrlEncoding(String data) => data;
 }
 
-
 bool isAPair(String route, String location) {
   route = route.substring(1);
   location = location.substring(1);
@@ -181,14 +180,13 @@ bool isAPair(String route, String location) {
   print(locationParts);
   for (int i = 0; i < locationParts.length; i++) {
     if (i >= routeParts.length) {
-      return false;   
+      return false;
     }
-   final locationPart = locationParts[i];
-   final routePart = routeParts[i];
-   if (!routePart.startsWith(":") && routePart != locationPart) {
-     return false; 
-   }
+    final locationPart = locationParts[i];
+    final routePart = routeParts[i];
+    if (!routePart.startsWith(":") && routePart != locationPart) {
+      return false;
+    }
   }
   return true;
 }
-
