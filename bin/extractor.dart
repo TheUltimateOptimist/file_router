@@ -26,7 +26,12 @@ Route extractRoute(Directory dir, Route? previous) {
   assert(dirName.startsWith("+") || dirName.startsWith(":") || dirName.startsWith("{"));
   final Route route;
   if (dirName.startsWith("+") || dirName.startsWith(":")) {
-    final relativeUrl = dirName.replaceAll("+", "").replaceAll("|", "/");
+    final relativeUrl = dirName.replaceAll("+", "").split("|").map((part) {
+      if (part.startsWith(":")) {
+        return ":${parseParamString(part).name}";
+      }
+      return part;
+    }).join("/");
     final params = extractParams(dir);
     final pageFile =
         dir.listSync().whereType<File>().singleWhere((file) => file.name.startsWith("+"));
