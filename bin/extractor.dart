@@ -22,6 +22,7 @@ List<Route> extractRoutes() {
 
 Route extractRoute(Directory dir, Route? previous) {
   final dirName = dir.name;
+  final dirPath = split(dir.path).skip(1).join("/"); //skips lib
   assert(dirName.startsWith("+") || dirName.startsWith(":") || dirName.startsWith("{"));
   final Route route;
   if (dirName.startsWith("+") || dirName.startsWith(":")) {
@@ -29,11 +30,11 @@ Route extractRoute(Directory dir, Route? previous) {
     final params = extractParams(dir);
     final pageFile =
         dir.listSync().whereType<File>().singleWhere((file) => file.name.startsWith("+"));
-    route = RegularRoute(dir.path, pageFile.name, previous, relativeUrl, params);
+    route = RegularRoute(dirPath, pageFile.name, previous, relativeUrl, params);
   } else if (dirName.startsWith("{")) {
     final shellFile =
         dir.listSync().whereType<File>().singleWhere((file) => file.name.startsWith("{"));
-    route = ShellRoute(dir.path, shellFile.name, previous);
+    route = ShellRoute(dirPath, shellFile.name, previous);
   } else {
     throw Exception("first letter of dirName has to be +, : or {");
   }
