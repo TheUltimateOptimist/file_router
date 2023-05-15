@@ -14,6 +14,8 @@ abstract class Route {
   String get filePath => join(folderPath, fileName);
 
   String get name;
+
+  String toCustomString(String leftSpace);
 }
 
 class ShellRoute extends Route {
@@ -26,10 +28,10 @@ class ShellRoute extends Route {
   }
 
   @override
-  String toString() {
+  String toCustomString(String leftSpace) {
     String result = "ShellRoute($folderPath, $fileName)";
     for (final child in children) {
-      result += "\n|--> ${child.toString()}";
+      result += "\n$leftSpace|-->${child.toCustomString('$leftSpace    ')}";
     }
     return result;
   }
@@ -54,13 +56,13 @@ class RegularRoute extends Route {
   }
 
   @override
-  String toString() {
+  String toCustomString(String leftSpace) {
     String result = "RegularRoute($folderPath, $fileName, $relativeUrl)";
     for (final param in params) {
-      result += "\n${param.toString()}";
+      result += "\n$leftSpace${param.toString()}";
     }
     for (final child in children) {
-      result += "\n|--> ${child.toString()}";
+      result += "\n$leftSpace|-->${child.toCustomString("$leftSpace    ")}";
     }
     return result;
   }
