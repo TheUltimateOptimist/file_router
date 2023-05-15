@@ -66,9 +66,14 @@ List<Param> extractParams(Directory dir) {
     //RegEx matches strings that start with an integer greater than zero followed by a minus
     //e.g. "34-sometext.dart", "1-lol.dart", "12-ahouse"
     if (fileName.startsWith("=") || RegExp(r"\d{1,}-").matchAsPrefix(fileName) != null) {
-      final isQueryParam = fileName.startsWith("=");
+      final isExtraParam = fileName.startsWith("=");
       bool importDefault = false;
       String? defaultValue;
+      if (isExtraParam) {
+        fileName = fileName.substring(1);
+      } else {
+        fileName = fileName.split("-")[1];
+      }
       if (fileName.contains("||")) {
         importDefault = true;
         fileName = fileName.split("||")[0];
@@ -79,15 +84,15 @@ List<Param> extractParams(Directory dir) {
       }
       var (name: name, type: type) = parseParamString(fileName);
       params.add(
-        isQueryParam
-            ? QueryParam(
+        isExtraParam
+            ? ExtraParam(
                 file.name,
                 name,
                 type,
                 defaultValue: defaultValue,
                 importDefault: importDefault,
               )
-            : ExtraParam(
+            : QueryParam(
                 file.name,
                 name,
                 type,
@@ -111,7 +116,7 @@ List<Param> extractUrlParams(String folderName) {
 }
 
 ({String name, String type}) parseParamString(String input) {
-  final parts = input.split("-");
+  final parts = input.split(";");
   return (
     name: parts.length > 1 ? parts[1] : parts[0].uncapitalize(),
     type: parts[0],
