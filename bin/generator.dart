@@ -53,7 +53,7 @@ base.ShellRoute(
     final routeBuilder = RouteBuilder();
     final params = getParams(route);
     for (final param in params) {
-      routeBuilder.declarations += "\nfinal ${param.type} ${param.name}";
+      routeBuilder.declarations += "\nfinal ${param.type} ${param.name};";
     }
     final positionalParams = params.whereType<UrlParam>();
     final namedParams = params.whereType<Optional>();
@@ -72,7 +72,11 @@ base.ShellRoute(
     for (final param in namedParams) {
       String defaultAssignment = "";
       if (param.defaultValue != null) {
-        defaultAssignment = " = ${param.defaultValue}";
+        String defaultValue = param.defaultValue!;
+        if (param.type.startsWith("String")) {
+          defaultValue = "'$defaultValue'";
+        }
+        defaultAssignment = " = $defaultValue";
       } else if (param.importDefault) {
         final importName = "${routeName}_${param.name}";
         context.addFileImport(join(route.folderPath, param.fullName), as: importName);
