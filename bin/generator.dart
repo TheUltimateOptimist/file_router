@@ -4,9 +4,9 @@ import 'params.dart';
 import 'routes.dart';
 import 'extensions/io.dart';
 
-List<Param> getParams(RegularRoute topRoute) {
+List<Param> getAncestorParams(RegularRoute topRoute) {
   List<Param> params = List.empty(growable: true);
-  Route? route = topRoute;
+  Route? route = topRoute.previous;
   while (route != null) {
     if (route is RegularRoute) {
       params.addAll(route.params);
@@ -21,11 +21,24 @@ String getAbsoluteUrl(RegularRoute topRoute) {
   Route? route = topRoute;
   while (route != null) {
     if (route is RegularRoute) {
-      url = "${route.relativeUrl}$url";
+      url = "${route.relativeUrl}/$url";
     }
     route = route.previous;
   }
+  if (url.startsWith("//")) {
+    url = url.substring(1);
+  }
   return url;
+}
+
+String? getPreviousRouteName(RegularRoute topRoute) {
+  Route? route = topRoute.previous;
+  while (route != null) {
+    if (route is RegularRoute) {
+      return "${route.name}Route";
+    }
+  }
+  return null;
 }
 
 void generateSource(List<Route> routes) {
@@ -50,14 +63,14 @@ base.ShellRoute(
 """;
   } else if (route is RegularRoute) {
     final routeName = "${route.name}Route";
+    final previousRouteName = getPreviousRouteName(route);
     final routeBuilder = RouteBuilder();
-    final params = getParams(route);
-    for (final param in params) {
+    for (final param in route.params) {
       routeBuilder.declarations += "\nfinal ${param.type} ${param.name};";
     }
-    final positionalParams = params.whereType<UrlParam>();
-    final namedParams = params.whereType<Optional>();
-    final queryParams = params.whereType<QueryParam>();
+    final positionalParams = route.params.whereType<UrlParam>();
+    final namedParams = route.params.whereType<Optional>();
+    final queryParams = route.params.whereType<QueryParam>();
     for (final param in positionalParams) {
       routeBuilder.constructor += "this.${param.name},";
       routeBuilder.fromUrlEncoding +=
@@ -95,20 +108,33 @@ base.ShellRoute(
     }
     routeBuilder.declarations.trim();
     routeBuilder.fromUrlEncoding.trim();
-    final isConst = params.isEmpty;
     final absoluteUrl = getAbsoluteUrl(route);
     context.addFileImport(join(route.folderPath, route.fileName));
+    String settingPrevious = "";
+    if (previousRouteName == null) {
+      settingPrevious = " : previous = null";
+    }
+    String constString = "";
+    if (route.previous == null && route.params.isEmpty) {
+      constString = "const ";
+    }
     context.routes += """
 class $routeName implements base.Route {
-  const $routeName(${routeBuilder.constructor});
+  const $routeName(${previousRouteName != null ? 'this.previous, ' : ''}${routeBuilder.constructor})$settingPrevious;
 
+  static $routeName _fromGoRouterState(base.GoRouterState state) {
+    ${routeBuilder.fromUrlEncoding}
+    return $constString$routeName(${previousRouteName != null ? '$previousRouteName._fromGoRouterState(state), ' : ''}${routeBuilder.instantiation});
+  }
+  @override
+  final ${previousRouteName ?? 'base.Route?'} previous;
   ${routeBuilder.declarations}
 
   @override
   String get location {
-    String queryPath = '';
+    final List<({String name, String value})> queryParams = List.empty(growable: true);
     ${routeBuilder.toUrlEncoding}
-    return '${absoluteUrl.replaceAll(":", "\$")}\$queryPath';
+    return base.createLocation('${route.relativeUrl.replaceAll(":", "\$")}', queryParams, previous);
   }
 }
 """;
@@ -122,11 +148,9 @@ base.GoRoute(
   path: '${route.relativeUrl}',
   builder: (BuildContext context, base.GoRouterState state) {
     if (state.extra != null) {
-      return ${route.name}(state.extra as $routeName);
+      return ${route.name}(base.getRoute<$routeName>(state.extra as base.Route));
     }
-    ${routeBuilder.fromUrlEncoding}
-    ${isConst ? 'const' : 'final'} route = $routeName(${routeBuilder.instantiation});
-    return ${isConst ? 'const ' : ''}${route.name}(route);
+    return ${route.name}($routeName._fromGoRouterState(state));
   },
   ${route.children.isEmpty ? '' : 'routes: ['}
 """;
@@ -171,14 +195,12 @@ else {
   if (param.type.endsWith("?")) {
     routeBuilder.toUrlEncoding += """
 if (${param.name} != null) {
-  final ${param.name} = $converter.toUrlEncoding(this.${param.name}!);
-  queryPath += queryPath.isEmpty ? '?${param.name}=\${this.${param.name}}' : '&${param.name}=\${this.${param.name}}';
+  queryParams.add((name: '${param.name}', value: $converter.toUrlEncoding(${param.name}!)));
 }
 """;
   } else {
     routeBuilder.toUrlEncoding += """
-final ${param.name} = $converter.toUrlEncoding(this.${param.name});
-queryPath += queryPath.isEmpty ? '?${param.name}=\${this.${param.name}}' : '&${param.name}=\${this.${param.name}}';
+queryParams.add((name: '${param.name}', value: $converter.toUrlEncoding(${param.name})));
 """;
   }
 }

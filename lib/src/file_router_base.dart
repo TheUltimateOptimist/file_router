@@ -5,7 +5,42 @@ import 'package:go_router/go_router.dart';
 
 abstract class Route {
   String get location;
-  Object? get extra;
+  Route? get previous;
+}
+
+String createLocation(
+    String relativeUrl, List<({String name, String value})> queryParams, Route? previous) {
+  String topQueryString =
+      queryParams.map((queryParam) => "${queryParam.name}=${queryParam.value}").join("&");
+  if (previous == null) {
+    final queryString = topQueryString.isNotEmpty ? "?$topQueryString" : "";
+    return "$relativeUrl$queryString";
+  } else {
+    final parentRelativeUrl = previous.location.split("?")[0];
+    final parentQueryString = previous.location.substring(parentRelativeUrl.length);
+    String queryString = "";
+    if (topQueryString.isNotEmpty) {
+      queryString = "?$topQueryString${parentQueryString.replaceAll("?", "&")}";
+    } else if (parentQueryString.isNotEmpty) {
+      queryString = parentQueryString;
+    }
+    String result = "$parentRelativeUrl/$relativeUrl$queryString";
+    if (result.startsWith("//")) {
+      result = result.substring(1);
+    }
+    return result;
+  }
+}
+
+R getRoute<R extends Route>(Route topRoute) {
+  Route? route = topRoute;
+  while (route != null) {
+    if (route is R) {
+      return route;
+    }
+    route = route.previous;
+  }
+  throw Exception("The given Route could not be find.");
 }
 
 class FileRouter extends GoRouter {
@@ -24,7 +59,7 @@ class FileRouter extends GoRouter {
           errorPageBuilder: data.errorPageBuilder,
           redirect: data.redirect,
           initialLocation: initialRoute.location,
-          initialExtra: initialRoute.extra,
+          initialExtra: initialRoute,
         );
 
   final FileRouterData data;
@@ -35,19 +70,19 @@ class FileRouter extends GoRouter {
   }
 
   void goRoute<R extends Route>(R route) {
-    go(route.location, extra: route.extra);
+    go(route.location, extra: route);
   }
 
   Future<T?> pushRoute<T extends Object?, R extends Route>(R route) {
-    return push(route.location, extra: route.extra);
+    return push(route.location, extra: route);
   }
 
   void pushReplacementRoute<R extends Route>(R route) {
-    return pushReplacement(route.location, extra: route.extra);
+    return pushReplacement(route.location, extra: route);
   }
 
   void replaceRoute<R extends Route>(R route) {
-    return replace(route.location, extra: route.extra);
+    return replace(route.location, extra: route);
   }
 
   static FileRouter of(BuildContext context) {
@@ -149,8 +184,7 @@ class BoolConverter implements Converter<bool> {
     } else if (data == "false") {
       return false;
     }
-    throw Exception(
-        "to convert from string to bool the string must be true or false");
+    throw Exception("to convert from string to bool the string must be true or false");
   }
 
   @override
@@ -170,18 +204,15 @@ class StringConverter implements Converter<String> {
 bool isAPair(String route, String location) {
   route = route.substring(1);
   location = location.substring(1);
-  print("ksjdfj");
   if (route.isEmpty && location.isEmpty) {
     return true;
   }
   final routeParts = route.split('/');
   final locationParts = location.split('/');
-  print(routeParts);
-  print(locationParts);
+  if (routeParts.length != locationParts.length) {
+    return false;
+  }
   for (int i = 0; i < locationParts.length; i++) {
-    if (i >= routeParts.length) {
-      return false;
-    }
     final locationPart = locationParts[i];
     final routePart = routeParts[i];
     if (!routePart.startsWith(":") && routePart != locationPart) {
