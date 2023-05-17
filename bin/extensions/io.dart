@@ -7,21 +7,29 @@ extension DirExtension on Directory {
 
 extension FileExtension on File {
   ///checks wheter the file contains a class declaration for the given className
-  bool containsClass(String className) => RegExp(r"class\s+\" + className).hasMatch(basename(path));
+  bool containsClass(String className) =>
+      RegExp(r"class\s+\" + className).hasMatch(readAsStringSync());
 
   String get name => basename(path);
 
-  void insertAfterImports(String source) {
+  void insertAfterImports(String source, {int topLineSpacing = 0, int bottomLineSpacing = 0}) {
     final lines = readAsLinesSync();
-    int i = 0;
-    while (i < lines.length) {
-      final line = lines[i].trim();
-      if (line.startsWith("import") || line.startsWith("//")) {
-        continue;
-      } else {
-        lines.insert(i, "\n$source\n");
-      }
+    int insertAt = 0;
+    while (insertAt < lines.length &&
+        (lines[insertAt].trim().startsWith("import") ||
+            lines[insertAt].startsWith("//") ||
+            lines[insertAt].trim().isEmpty)) {
+      insertAt++;
     }
+    final top = "\n" * topLineSpacing;
+    final bottom = "\n" * bottomLineSpacing;
+    lines.insert(insertAt, "$top$source$bottom");
     writeAsStringSync(lines.join("\n"));
+  }
+
+  void addImport(String path, {String? as}) {
+    if (!readAsStringSync().contains(path)) {
+      insertAfterImports("import '$path'${as != null ? ' as $as' : ''};");
+    }
   }
 }
