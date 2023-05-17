@@ -9,7 +9,7 @@ import 'routes.dart';
 class RoutesFolderDoesNotExist implements Exception {}
 
 List<Route> extractRoutes() {
-  final dir = Directory("lib/routes");
+  final dir = Directory(join("lib", "routes"));
   if (!dir.existsSync()) {
     throw RoutesFolderDoesNotExist();
   }
