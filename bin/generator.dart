@@ -51,9 +51,50 @@ void generateSource(List<Route> routes) {
   file.writeAsStringSync(context.source);
 }
 
+void generatePage(Route route) {
+  print("generating page");
+  final relativePath = joinAll(route.filePath.split("/"));
+  final projectName = basename(Directory.current.path);
+  final file = File(join(Directory.current.path, "lib", relativePath));
+  print(route.name);
+  print(route is RegularRoute);
+  print(file.containsClass(route.name));
+  if (route is RegularRoute && !file.containsClass(route.name)) {
+    print("adding import ");
+    file.addImport("package:$projectName/file_router.dart");
+    print("inserting declarations");
+    print(file.existsSync());
+    file.insertAfterImports("""
+class ${route.name} extends StatelessPage<${route.name}Route> {
+  const ${route.name}(super.route, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Placeholder();
+  }
+}
+
+// class ${route.name} extends StatefulPage<${route.name}Route> {
+//   const ${route.name}(super.route, {super.key});
+
+//   @override
+//   State<${route.name}> createState() => _${route.name}State(); 
+// }
+
+// class _${route.name}State extends State<${route.name}> {
+//   @override
+//   Widget build(BuildContext context) {
+//     return const Placeholder(); 
+//   }
+// }
+""", topLineSpacing: 1);
+  }
+}
+
 void generateRouteSource(BuildContext context, Route route) {
+  context.addFileImport(route.filePath);
+  generatePage(route);
   if (route is ShellRoute) {
-    context.addFileImport(join(route.folderPath, route.filePath));
     context.routeTree += """
 base.ShellRoute(
   builder: (BuildContext context, base.GoRouterState state, Widget child){
@@ -92,7 +133,7 @@ base.ShellRoute(
         defaultAssignment = " = $defaultValue";
       } else if (param.importDefault) {
         final importName = "${routeName}_${param.name}";
-        context.addFileImport(join(route.folderPath, param.fullName), as: importName);
+        context.addFileImport("${route.folderPath}/${param.fullName}", as: importName);
         defaultAssignment = " = $importName.defaultValue";
       } else if (param.isRequired) {
         routeBuilder.constructor += "required ";
@@ -109,7 +150,6 @@ base.ShellRoute(
     routeBuilder.declarations.trim();
     routeBuilder.fromUrlEncoding.trim();
     final absoluteUrl = getAbsoluteUrl(route);
-    context.addFileImport(join(route.folderPath, route.fileName));
     String settingPrevious = "";
     if (previousRouteName == null) {
       settingPrevious = " : previous = null";
@@ -232,6 +272,7 @@ import 'package:file_router/file_router.dart' as base;
 $imports
 
 export 'package:file_router/file_router.dart';
+export 'package:flutter/material.dart' show BuildContext, Widget, Placeholder, State;
 
 $routes
 
