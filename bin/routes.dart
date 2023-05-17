@@ -11,7 +11,7 @@ abstract class Route {
   final Route? previous;
   List<Route> children = List.empty(growable: true);
 
-  String get filePath => join(folderPath, fileName);
+  String get filePath => "$folderPath/$fileName";
 
   String get name;
 
