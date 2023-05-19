@@ -56,14 +56,8 @@ void generatePage(Route route) {
   final relativePath = joinAll(route.filePath.split("/"));
   final projectName = basename(Directory.current.path);
   final file = File(join(Directory.current.path, "lib", relativePath));
-  print(route.name);
-  print(route is RegularRoute);
-  print(file.containsClass(route.name));
   if (route is RegularRoute && !file.containsClass(route.name)) {
-    print("adding import ");
     file.addImport("package:$projectName/file_router.dart");
-    print("inserting declarations");
-    print(file.existsSync());
     file.insertAfterImports("""
 class ${route.name} extends StatelessPage<${route.name}Route> {
   const ${route.name}(super.route, {super.key});
