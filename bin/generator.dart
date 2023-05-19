@@ -36,6 +36,8 @@ String? getPreviousRouteName(RegularRoute topRoute) {
   while (route != null) {
     if (route is RegularRoute) {
       return "${route.name}Route";
+    } else {
+      route = route.previous;
     }
   }
   return null;
