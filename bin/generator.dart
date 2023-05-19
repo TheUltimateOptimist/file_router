@@ -52,13 +52,16 @@ void generateSource(List<Route> routes) {
 }
 
 void generatePage(Route route) {
-  print("generating page");
   final relativePath = joinAll(route.filePath.split("/"));
   final projectName = basename(Directory.current.path);
   final file = File(join(Directory.current.path, "lib", relativePath));
-  if (route is RegularRoute && !file.containsClass(route.name)) {
-    file.addImport("package:$projectName/file_router.dart");
-    file.insertAfterImports("""
+  if (file.containsClass(route.name)) {
+    return;
+  }
+  file.addImport("package:$projectName/file_router.dart");
+  switch (route.runtimeType) {
+    case RegularRoute:
+      file.insertAfterImports("""
 class ${route.name} extends StatelessPage<${route.name}Route> {
   const ${route.name}(super.route, {super.key});
 
@@ -70,6 +73,31 @@ class ${route.name} extends StatelessPage<${route.name}Route> {
 
 // class ${route.name} extends StatefulPage<${route.name}Route> {
 //   const ${route.name}(super.route, {super.key});
+
+//   @override
+//   State<${route.name}> createState() => _${route.name}State(); 
+// }
+
+// class _${route.name}State extends State<${route.name}> {
+//   @override
+//   Widget build(BuildContext context) {
+//     return const Placeholder(); 
+//   }
+// }
+""", topLineSpacing: 1);
+    case ShellRoute:
+      file.insertAfterImports("""
+class ${route.name} extends StatelessShell {
+  const ${route.name}(super.child, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Placeholder();
+  }
+}
+
+// class ${route.name} extends StatefulShell {
+//   const ${route.name}(super.child, {super.key});
 
 //   @override
 //   State<${route.name}> createState() => _${route.name}State(); 
