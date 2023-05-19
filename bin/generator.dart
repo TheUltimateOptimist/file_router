@@ -25,6 +25,7 @@ String getAbsoluteUrl(RegularRoute topRoute) {
     }
     route = route.previous;
   }
+  url = url.substring(0, url.length - 1);
   if (url.startsWith("//")) {
     url = url.substring(1);
   }
