@@ -6,94 +6,140 @@
 import 'package:flutter/material.dart';
 import 'package:file_router/file_router.dart' as base;
 
-import 'package:ex1/{shell}.dart';
-import 'package:ex1/+Index.dart';
-import 'package:ex1/+about/+About.dart';
-import 'package:ex1/+cars/+Cars.dart';
-import 'package:ex1/+cars/[int-carId]/+Car.dart';
+import 'package:ex1/routes/{RootShell}/{RootShell}.dart';
+import 'package:ex1/routes/{RootShell}/+|/+HomePage.dart';
+import 'package:ex1/routes/{RootShell}/+|/+about/+AboutPage.dart';
+import 'package:ex1/routes/{RootShell}/+|/+cars/+CarsPage.dart';
+import 'package:ex1/routes/{RootShell}/+|/+cars/:int;carId/+CarPage.dart';
 
 export 'package:file_router/file_router.dart';
+export 'package:flutter/material.dart' show BuildContext, Widget, Placeholder, State;
 
-class IndexRoute implements base.Route {
-  const IndexRoute();
+class HomePageRoute implements base.Route {
+  const HomePageRoute({
+    this.age = 3,
+  }) : previous = null;
 
-  @override
-  String get location {
-    String queryPath = '';
-
-    return '/$queryPath';
+  static HomePageRoute _fromGoRouterState(base.GoRouterState state) {
+    return HomePageRoute();
   }
 
   @override
-  Object? get extra => null;
+  final base.Route? previous;
+
+  final int age;
+
+  @override
+  String get location {
+    final List<({String name, String value})> queryParams = List.empty(growable: true);
+
+    return base.createLocation('/', queryParams, previous);
+  }
 }
 
-class AboutRoute implements base.Route {
-  const AboutRoute({
+class AboutPageRoute implements base.Route {
+  const AboutPageRoute(
+    this.previous, {
     required this.id,
-    required this.name,
     required this.isAdmin,
+    this.parentAge,
     required this.percentage,
+    required this.name,
   });
 
+  static AboutPageRoute _fromGoRouterState(base.GoRouterState state) {
+    final id = int_converter.fromUrlEncoding(state.queryParams['id']!);
+    final isAdmin = bool_converter.fromUrlEncoding(state.queryParams['isAdmin']!);
+    final int? parentAge;
+    if (state.queryParams['parentAge'] != null) {
+      parentAge = int_converter.fromUrlEncoding(state.queryParams['parentAge']!);
+    } else {
+      parentAge = null;
+    }
+    final percentage = double_converter.fromUrlEncoding(state.queryParams['percentage']!);
+    final name = String_converter.fromUrlEncoding(state.queryParams['name']!);
+    return AboutPageRoute(
+      HomePageRoute._fromGoRouterState(state),
+      id: id,
+      isAdmin: isAdmin,
+      parentAge: parentAge,
+      percentage: percentage,
+      name: name,
+    );
+  }
+
+  @override
+  final HomePageRoute previous;
+
   final int id;
-  final String name;
   final bool isAdmin;
+  final int? parentAge;
   final double percentage;
+  final String name;
 
   @override
   String get location {
-    String queryPath = '';
-    final idValue = int_converter.toUrlEncoding(id);
-    queryPath += queryPath.isEmpty ? '?id=$idValue' : '&id=$idValue';
-    final nameValue = String_converter.toUrlEncoding(name);
-    queryPath += queryPath.isEmpty ? '?name=$nameValue' : '&name=$nameValue';
-    final isAdminValue = bool_converter.toUrlEncoding(isAdmin);
-    queryPath +=
-        queryPath.isEmpty ? '?isAdmin=$isAdminValue' : '&isAdmin=$isAdminValue';
-    final percentageValue = double_converter.toUrlEncoding(percentage);
-    queryPath += queryPath.isEmpty
-        ? '?percentage=$percentageValue'
-        : '&percentage=$percentageValue';
+    final List<({String name, String value})> queryParams = List.empty(growable: true);
+    queryParams.add((name: 'id', value: int_converter.toUrlEncoding(id)));
+    queryParams.add((name: 'isAdmin', value: bool_converter.toUrlEncoding(isAdmin)));
+    if (parentAge != null) {
+      queryParams.add((name: 'parentAge', value: int_converter.toUrlEncoding(parentAge!)));
+    }
+    queryParams.add((name: 'percentage', value: double_converter.toUrlEncoding(percentage)));
+    queryParams.add((name: 'name', value: String_converter.toUrlEncoding(name)));
 
-    return '/about$queryPath';
+    return base.createLocation('about', queryParams, previous);
+  }
+}
+
+class CarsPageRoute implements base.Route {
+  const CarsPageRoute(
+    this.previous,
+  );
+
+  static CarsPageRoute _fromGoRouterState(base.GoRouterState state) {
+    return CarsPageRoute(
+      HomePageRoute._fromGoRouterState(state),
+    );
   }
 
   @override
-  Object? get extra => null;
-}
-
-class CarsRoute implements base.Route {
-  const CarsRoute();
+  final HomePageRoute previous;
 
   @override
   String get location {
-    String queryPath = '';
+    final List<({String name, String value})> queryParams = List.empty(growable: true);
 
-    return '/cars$queryPath';
+    return base.createLocation('cars', queryParams, previous);
   }
-
-  @override
-  Object? get extra => null;
 }
 
-class CarRoute implements base.Route {
-  const CarRoute(
+class CarPageRoute implements base.Route {
+  const CarPageRoute(
+    this.previous,
     this.carId,
   );
+
+  static CarPageRoute _fromGoRouterState(base.GoRouterState state) {
+    final carId = int_converter.fromUrlEncoding(state.params['carId']!);
+    return CarPageRoute(
+      CarsPageRoute._fromGoRouterState(state),
+      carId,
+    );
+  }
+
+  @override
+  final CarsPageRoute previous;
 
   final int carId;
 
   @override
   String get location {
-    String queryPath = '';
+    final List<({String name, String value})> queryParams = List.empty(growable: true);
 
-    final carIdValue = int_converter.toUrlEncoding(carId);
-    return '/cars/$carIdValue$queryPath';
+    final carId = int_converter.toUrlEncoding(this.carId);
+    return base.createLocation('$carId', queryParams, previous);
   }
-
-  @override
-  Object? get extra => null;
 }
 
 const int_converter = base.IntConverter();
@@ -103,16 +149,16 @@ const double_converter = base.DoubleConverter();
 
 bool currentIs<T extends base.Route>(String location) {
   location = location.split("?")[0];
-  if (T == IndexRoute) {
+  if (T == HomePageRoute) {
     return base.isAPair('/', location);
   }
-  if (T == AboutRoute) {
+  if (T == AboutPageRoute) {
     return base.isAPair('/about', location);
   }
-  if (T == CarsRoute) {
+  if (T == CarsPageRoute) {
     return base.isAPair('/cars', location);
   }
-  if (T == CarRoute) {
+  if (T == CarPageRoute) {
     return base.isAPair('/cars/:carId', location);
   }
 
@@ -130,46 +176,37 @@ final routerData = base.FileRouterData(
         base.GoRoute(
           path: '/',
           builder: (BuildContext context, base.GoRouterState state) {
-            const route = IndexRoute();
-            return const Index(route);
+            if (state.extra != null) {
+              return HomePage(base.getRoute<HomePageRoute>(state.extra as base.Route));
+            }
+            return HomePage(HomePageRoute._fromGoRouterState(state));
           },
           routes: [
             base.GoRoute(
               path: 'about',
               builder: (BuildContext context, base.GoRouterState state) {
-                final id =
-                    int_converter.fromUrlEncoding(state.queryParams['id']!);
-                final name = String_converter.fromUrlEncoding(
-                    state.queryParams['name']!);
-                final isAdmin = bool_converter
-                    .fromUrlEncoding(state.queryParams['isAdmin']!);
-                final percentage = double_converter
-                    .fromUrlEncoding(state.queryParams['percentage']!);
-                final route = AboutRoute(
-                  id: id,
-                  name: name,
-                  isAdmin: isAdmin,
-                  percentage: percentage,
-                );
-                return About(route);
+                if (state.extra != null) {
+                  return AboutPage(base.getRoute<AboutPageRoute>(state.extra as base.Route));
+                }
+                return AboutPage(AboutPageRoute._fromGoRouterState(state));
               },
             ),
             base.GoRoute(
               path: 'cars',
               builder: (BuildContext context, base.GoRouterState state) {
-                const route = CarsRoute();
-                return const Cars(route);
+                if (state.extra != null) {
+                  return CarsPage(base.getRoute<CarsPageRoute>(state.extra as base.Route));
+                }
+                return CarsPage(CarsPageRoute._fromGoRouterState(state));
               },
               routes: [
                 base.GoRoute(
                   path: ':carId',
                   builder: (BuildContext context, base.GoRouterState state) {
-                    final carId =
-                        int_converter.fromUrlEncoding(state.params['carId']!);
-                    final route = CarRoute(
-                      carId,
-                    );
-                    return Car(route);
+                    if (state.extra != null) {
+                      return CarPage(base.getRoute<CarPageRoute>(state.extra as base.Route));
+                    }
+                    return CarPage(CarPageRoute._fromGoRouterState(state));
                   },
                 ),
               ],
