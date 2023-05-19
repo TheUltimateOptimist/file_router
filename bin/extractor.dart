@@ -53,7 +53,9 @@ List<Directory> extractRouteDirs(Directory dir) {
   return dir
       .listSync()
       .whereType<Directory>()
-      .where((dir) => dir.name.startsWith("+") || dir.name.startsWith(":"))
+      .where(
+        (dir) => dir.name.startsWith("+") || dir.name.startsWith(":") || dir.name.startsWith("{"),
+      )
       .toList();
 }
 
