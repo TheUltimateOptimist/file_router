@@ -3,11 +3,5 @@ import 'generator.dart';
 
 void main(List<String> args) {
   final routes = extractRoutes();
-  // for (final route in routes) {
-  //   print(route.toCustomString(""));
-  // }
   generateSource(routes);
-  // final file = File("bin/somefile.dart");
-  //file.createSync();
-  // file.writeAsString("const number = 9;");
 }
