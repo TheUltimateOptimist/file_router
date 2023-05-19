@@ -7,4 +7,7 @@ void main(List<String> args) {
   //   print(route.toCustomString(""));
   // }
   generateSource(routes);
+  // final file = File("bin/somefile.dart");
+  //file.createSync();
+  // file.writeAsString("const number = 9;");
 }
