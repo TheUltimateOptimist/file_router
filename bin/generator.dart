@@ -142,9 +142,9 @@ base.ShellRoute(
     for (final param in positionalParams) {
       routeBuilder.constructor += "this.${param.name},";
       routeBuilder.fromUrlEncoding +=
-          "\nfinal ${param.name} = ${param.type}_converter.fromUrlEncoding(state.params['${param.name}']!);";
+          "\nfinal ${param.name} = ${param.type.uncapitalize()}Converter.fromUrlEncoding(state.params['${param.name}']!);";
       routeBuilder.toUrlEncoding +=
-          "\nfinal ${param.name} = ${param.type}_converter.toUrlEncoding(this.${param.name});";
+          "\nfinal ${param.name} = ${param.type.uncapitalize()}Converter.toUrlEncoding(this.${param.name});";
       routeBuilder.instantiation += "${param.name}, ";
     }
     if (namedParams.isNotEmpty) {
@@ -254,7 +254,7 @@ ${parentRoute.name}Route get ${parentRoute.name.uncapitalize()}Route => $previou
 }
 
 void addQueryParamConversions(RouteBuilder routeBuilder, QueryParam param, String routeName) {
-  final converter = "${param.type.replaceAll("?", "")}_converter";
+  final converter = "${param.type.replaceAll("?", "").uncapitalize()}Converter";
   if (param.defaultValue != null) {
     routeBuilder.fromUrlEncoding +=
         "\nfinal ${param.name} = $converter.fromUrlEncoding(state.queryParams['${param.name}'] ?? '${param.defaultValue}');";
@@ -327,10 +327,10 @@ export 'package:flutter/material.dart' show BuildContext, Widget, Placeholder, S
 
 $routes
 
-const int_converter = base.IntConverter();
-const String_converter = base.StringConverter();
-const bool_converter = base.BoolConverter();
-const double_converter = base.DoubleConverter();
+const intConverter = base.IntConverter();
+const stringConverter = base.StringConverter();
+const boolConverter = base.BoolConverter();
+const doubleConverter = base.DoubleConverter();
 
 bool currentIs<T extends base.Route>(String location) {
   location = location.split("?")[0];
