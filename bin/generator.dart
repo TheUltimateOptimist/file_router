@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:path/path.dart';
+import 'extensions/string.dart';
 import 'params.dart';
 import 'routes.dart';
 import 'extensions/io.dart';
@@ -131,6 +132,7 @@ base.ShellRoute(
     final routeName = "${route.name}Route";
     final previousRouteName = getPreviousRouteName(route);
     final routeBuilder = RouteBuilder();
+    addGetters(routeBuilder, route);
     for (final param in route.params) {
       routeBuilder.declarations += "\nfinal ${param.type} ${param.name};";
     }
@@ -201,6 +203,9 @@ class $routeName implements base.Route {
     ${routeBuilder.toUrlEncoding}
     return base.createLocation('${route.relativeUrl.replaceAll(":", "\$")}', queryParams, previous);
   }
+
+  ${routeBuilder.routeGetters}
+  ${routeBuilder.fieldGetters}
 }
 """;
     context.currentIs += """
@@ -227,6 +232,25 @@ base.GoRoute(
     context.routeTree += "],";
   }
   context.routeTree += "),";
+}
+
+void addGetters(RouteBuilder routeBuilder, RegularRoute route) {
+  Route? parentRoute = route.previous;
+  String previous = "previous";
+  while (parentRoute != null) {
+    if (parentRoute is RegularRoute) {
+      for (final param in parentRoute.params) {
+        routeBuilder.fieldGetters += """
+${param.type} get ${param.name} => $previous.${param.name}; 
+""";
+      }
+      routeBuilder.routeGetters += """
+${parentRoute.name}Route get ${parentRoute.name.uncapitalize()}Route => $previous;
+""";
+    }
+    parentRoute = parentRoute.previous;
+    previous += ".previous";
+  }
 }
 
 void addQueryParamConversions(RouteBuilder routeBuilder, QueryParam param, String routeName) {
@@ -276,6 +300,8 @@ class RouteBuilder {
   String fromUrlEncoding = "";
   String toUrlEncoding = "";
   String instantiation = "";
+  String fieldGetters = "";
+  String routeGetters = "";
 }
 
 class BuildContext {
