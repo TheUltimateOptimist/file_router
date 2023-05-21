@@ -47,6 +47,7 @@ String? getPreviousRouteName(RegularRoute topRoute) {
 
 void generateSource(List<Route> routes) {
   final context = BuildContext();
+  addCustomConverters(context);
   for (final route in routes) {
     generateRouteSource(context, route);
   }
@@ -142,9 +143,9 @@ base.ShellRoute(
     for (final param in positionalParams) {
       routeBuilder.constructor += "this.${param.name},";
       routeBuilder.fromUrlEncoding +=
-          "\nfinal ${param.name} = ${param.type.uncapitalize()}Converter.fromUrlEncoding(state.params['${param.name}']!);";
+          "\nfinal ${param.name} = ${getConverterName(param.type)}.fromUrlEncoding(state.params['${param.name}']!);";
       routeBuilder.toUrlEncoding +=
-          "\nfinal ${param.name} = ${param.type.uncapitalize()}Converter.toUrlEncoding(this.${param.name});";
+          "\nfinal ${param.name} = ${getConverterName(param.type)}.toUrlEncoding(this.${param.name});";
       routeBuilder.instantiation += "${param.name}, ";
     }
     if (namedParams.isNotEmpty) {
@@ -160,7 +161,8 @@ base.ShellRoute(
         defaultAssignment = " = $defaultValue";
       } else if (param.importDefault) {
         final importName = "${routeName}_${param.name}";
-        context.addFileImport("${route.folderPath}/${param.fullName}", as: importName);
+        context.addFileImport("${route.folderPath}/${param.fullName}",
+            additional: " as $importName");
         defaultAssignment = " = $importName.defaultValue";
       } else if (param.isRequired) {
         routeBuilder.constructor += "required ";
@@ -234,6 +236,21 @@ base.GoRoute(
   context.routeTree += "),";
 }
 
+void addCustomConverters(BuildContext context) {
+  final dir = Directory(join("lib", "converters"));
+  if (!dir.existsSync()) {
+    return;
+  }
+  final files = dir.listSync().whereType<File>();
+  for (final file in files) {
+    final typeName = file.name.split(".")[0].snakeToCamelCase();
+    context.addFileImport("converters/${file.name}",
+        additional: " hide toUrlEncoding, fromUrlEncoding");
+    context.addFileImport("converters/${file.name}",
+        additional: " as ${getConverterName(typeName)}");
+  }
+}
+
 void addGetters(RouteBuilder routeBuilder, RegularRoute route) {
   Route? parentRoute = route.previous;
   String previous = "previous";
@@ -253,8 +270,12 @@ ${parentRoute.name}Route get ${parentRoute.name.uncapitalize()}Route => $previou
   }
 }
 
+String getConverterName(String typeName) {
+  return "${typeName.uncapitalize().replaceAll("?", "")}Converter";
+}
+
 void addQueryParamConversions(RouteBuilder routeBuilder, QueryParam param, String routeName) {
-  final converter = "${param.type.replaceAll("?", "").uncapitalize()}Converter";
+  final converter = getConverterName(param.type);
   if (param.defaultValue != null) {
     routeBuilder.fromUrlEncoding +=
         "\nfinal ${param.name} = $converter.fromUrlEncoding(state.queryParams['${param.name}'] ?? '${param.defaultValue}');";
@@ -309,6 +330,7 @@ class BuildContext {
   String routes = "";
   String imports = "";
   String currentIs = "";
+  String customConverters = "";
 
   String get source {
     imports.trim();
@@ -347,8 +369,8 @@ final routerData = base.FileRouterData(
 """;
   }
 
-  void addFileImport(String path, {String? as}) {
+  void addFileImport(String path, {String additional = ""}) {
     final projectName = Directory.current.name;
-    imports += "\nimport 'package:$projectName/$path'${as != null ? ' as $as' : ''};";
+    imports += "\nimport 'package:$projectName/$path'$additional;";
   }
 }
