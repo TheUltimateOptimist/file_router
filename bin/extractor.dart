@@ -20,15 +20,49 @@ List<Route> extractRoutes() {
   return routes;
 }
 
+// String extractPath(String input) {
+//   print(input);
+//   print("se");
+//   assert(input.startsWith("+") || input.startsWith("["));
+//   if (input == "+") {
+//     return "/";
+//   }
+//   bool isParam = false;
+//   if (input.startsWith("+")) {
+//     input = input.substring(1);
+//   }
+//   List<String> parts = List.empty(growable: true);
+//   String part = "";
+//   for (final character in input.split("")) {
+//     if (character == "[") {
+//       isParam = true;
+//     } else if (character == "]") {
+//       isParam = false;
+//       parts.add(":${parseParamString(part).name}");
+//       part = "";
+//     } else if (!isParam && character == ";") {
+//       parts.add(part);
+//       part = "";
+//     } else {
+//       part += character;
+//     }
+//   }
+//   if (part.isNotEmpty) {
+//     parts.add(part);
+//   }
+//   print(parts.join("/"));
+//   return parts.join("/");
+// }
+
 Route extractRoute(Directory dir, Route? previous) {
   final dirName = dir.name;
   final dirPath = split(dir.path).skip(1).join("/"); //skips lib
-  assert(dirName.startsWith("+") || dirName.startsWith(":") || dirName.startsWith("{"));
+  assert(dirName.startsWith("+") || dirName.startsWith("[") || dirName.startsWith("{"));
   final Route route;
-  if (dirName.startsWith("+") || dirName.startsWith(":")) {
-    final relativeUrl = dirName.replaceAll("+", "").split("|").map((part) {
-      if (part.startsWith(":")) {
-        return ":${parseParamString(part).name}";
+  if (dirName.startsWith("+") || dirName.startsWith("[")) {
+    final relativeUrl = dirName.replaceAll("+", "").split("%").map((part) {
+      if (part.startsWith("[")) {
+        return ":${parseParamString(part.withoutSurroundingChars()).name}";
       }
       return part;
     }).join("/");
@@ -41,7 +75,7 @@ Route extractRoute(Directory dir, Route? previous) {
         dir.listSync().whereType<File>().singleWhere((file) => file.name.startsWith("{"));
     route = ShellRoute(dirPath, shellFile.name, previous);
   } else {
-    throw Exception("first letter of dirName has to be +, : or {");
+    throw Exception("first letter of dirName has to be +, [ or {");
   }
   for (final routeDir in extractRouteDirs(dir)) {
     route.children.add(extractRoute(routeDir, route));
@@ -54,7 +88,7 @@ List<Directory> extractRouteDirs(Directory dir) {
       .listSync()
       .whereType<Directory>()
       .where(
-        (dir) => dir.name.startsWith("+") || dir.name.startsWith(":") || dir.name.startsWith("{"),
+        (dir) => dir.name.startsWith("+") || dir.name.startsWith("[") || dir.name.startsWith("{"),
       )
       .toList();
 }
@@ -76,11 +110,11 @@ List<Param> extractParams(Directory dir) {
       } else {
         fileName = fileName.split("-")[1];
       }
-      if (fileName.contains("||")) {
+      if (fileName.contains("%%")) {
         importDefault = true;
-        fileName = fileName.split("||")[0];
-      } else if (fileName.contains("|")) {
-        final parts = fileName.split("|");
+        fileName = fileName.split("%%")[0];
+      } else if (fileName.contains("%")) {
+        final parts = fileName.split("%");
         defaultValue = parts[1];
         fileName = parts[0];
       }
@@ -108,10 +142,10 @@ List<Param> extractParams(Directory dir) {
 }
 
 List<Param> extractUrlParams(String folderName) {
-  final parts = folderName.split("|").where((name) => name.startsWith(":"));
+  final parts = folderName.split("%").where((name) => name.startsWith("["));
   List<Param> params = List.empty(growable: true);
   for (final part in parts) {
-    var (name: name, type: type) = parseParamString(part.substring(1));
+    var (name: name, type: type) = parseParamString(part.withoutSurroundingChars());
     params.add(UrlParam(part, name, type));
   }
   return params;

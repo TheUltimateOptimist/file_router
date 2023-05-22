@@ -13,4 +13,6 @@ extension StringExtensions on String {
   String snakeToPascalCase() => split("_").map((word) => word.capitalize()).join("");
 
   String snakeToCamelCase() => snakeToPascalCase().uncapitalize();
+
+  String withoutSurroundingChars() => substring(1, length - 1);
 }
