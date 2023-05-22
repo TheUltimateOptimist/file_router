@@ -220,7 +220,10 @@ base.GoRoute(
   path: '${route.relativeUrl}',
   builder: (BuildContext context, base.GoRouterState state) {
     if (state.extra != null) {
-      return ${route.name}(base.getRoute<$routeName>(state.extra as base.Route));
+      final route = base.getRoute<$routeName>(state.extra as base.Route);
+      if (route != null) {
+        return ${route.name}(route);
+      }
     }
     return ${route.name}($routeName._fromGoRouterState(state));
   },
