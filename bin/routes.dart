@@ -1,5 +1,3 @@
-import 'package:path/path.dart';
-
 import 'extensions/string.dart';
 import 'params.dart';
 
@@ -52,7 +50,7 @@ class RegularRoute extends Route {
   @override
   String get name {
     //example: "+home_page.dart" -> "HomePage"
-    return fileName.replaceAll("+", "").split(".dart")[0];
+    return fileName.replaceAll("+", "").split(".dart")[0].snakeToPascalCase();
   }
 
   @override
