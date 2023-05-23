@@ -4,6 +4,11 @@ class Param {
   final String fullName;
   final String name;
   final String type;
+
+  bool get typeBuiltIn {
+    const types = ["int", "int?", "String", "String?", "bool", "bool?", "double", "double?"];
+    return types.contains(type);
+  }
 }
 
 class Optional extends Param {

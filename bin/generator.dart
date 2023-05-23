@@ -47,7 +47,7 @@ String? getPreviousRouteName(RegularRoute topRoute) {
 
 void generateSource(List<Route> routes) {
   final context = BuildContext();
-  addCustomConverters(context);
+  addCustomTypes(context);
   for (final route in routes) {
     generateRouteSource(context, route);
   }
@@ -141,11 +141,12 @@ base.ShellRoute(
     final namedParams = route.params.whereType<Optional>();
     final queryParams = route.params.whereType<QueryParam>();
     for (final param in positionalParams) {
+      final converters = param.typeBuiltIn ? "builtInConverters" : "converters";
       routeBuilder.constructor += "this.${param.name},";
       routeBuilder.fromUrlEncoding +=
-          "\nfinal ${param.name} = ${getConverterName(param.type)}.fromUrlEncoding(state.params['${param.name}']!);";
+          "\nfinal ${param.name} = base.fromUrlEncoding<${param.type}>($converters, state.params['${param.name}']!);";
       routeBuilder.toUrlEncoding +=
-          "\nfinal ${param.name} = ${getConverterName(param.type)}.toUrlEncoding(this.${param.name});";
+          "\nfinal ${param.name} = base.toUrlEncoding<${param.type}>($converters, this.${param.name});";
       routeBuilder.instantiation += "${param.name}, ";
     }
     if (namedParams.isNotEmpty) {
@@ -239,19 +240,12 @@ base.GoRoute(
   context.routeTree += "),";
 }
 
-void addCustomConverters(BuildContext context) {
-  final dir = Directory(join("lib", "converters"));
-  if (!dir.existsSync()) {
+void addCustomTypes(BuildContext context) {
+  final file = File(join("lib", "types.dart"));
+  if (!file.existsSync()) {
     return;
   }
-  final files = dir.listSync().whereType<File>();
-  for (final file in files) {
-    final typeName = file.name.split(".")[0].snakeToCamelCase();
-    context.addFileImport("converters/${file.name}",
-        additional: " hide toUrlEncoding, fromUrlEncoding");
-    context.addFileImport("converters/${file.name}",
-        additional: " as ${getConverterName(typeName)}");
-  }
+  context.addFileImport("types.dart");
 }
 
 void addGetters(RouteBuilder routeBuilder, RegularRoute route) {
@@ -273,20 +267,16 @@ ${parentRoute.name}Route get ${parentRoute.name.uncapitalize()}Route => $previou
   }
 }
 
-String getConverterName(String typeName) {
-  return "${typeName.uncapitalize().replaceAll("?", "")}Converter";
-}
-
 void addQueryParamConversions(RouteBuilder routeBuilder, QueryParam param, String routeName) {
-  final converter = getConverterName(param.type);
+  final converters = param.typeBuiltIn ? "builtInConverters" : "converters";
   if (param.defaultValue != null) {
     routeBuilder.fromUrlEncoding +=
-        "\nfinal ${param.name} = $converter.fromUrlEncoding(state.queryParams['${param.name}'] ?? '${param.defaultValue}');";
+        "\nfinal ${param.name} = base.fromUrlEncoding<${param.type}>($converters, state.queryParams['${param.name}'] ?? '${param.defaultValue}');";
   } else if (param.importDefault) {
     routeBuilder.fromUrlEncoding += """
 final ${param.type} ${param.name};
 if (state.queryParams['${param.name}'] != null) {
-  ${param.name} = $converter.fromUrlEncoding(state.queryParams['${param.name}']!);
+  ${param.name} = base.fromUrlEncoding<${param.type}>($converters, state.queryParams['${param.name}']!);
 }
 else {
   ${param.name} = ${routeName}_${param.name}.defaultValue;
@@ -294,12 +284,12 @@ else {
 """;
   } else if (param.isRequired) {
     routeBuilder.fromUrlEncoding +=
-        "\nfinal ${param.name} = $converter.fromUrlEncoding(state.queryParams['${param.name}']!);";
+        "\nfinal ${param.name} = base.fromUrlEncoding<${param.type}>($converters, state.queryParams['${param.name}']!);";
   } else {
     routeBuilder.fromUrlEncoding += """
 final ${param.type} ${param.name};
 if (state.queryParams['${param.name}'] != null) {
-  ${param.name} = $converter.fromUrlEncoding(state.queryParams['${param.name}']!);
+  ${param.name} = base.fromUrlEncoding<${param.type}>($converters, state.queryParams['${param.name}']!);
 }
 else {
   ${param.name} = null;
@@ -308,12 +298,12 @@ else {
   if (param.type.endsWith("?")) {
     routeBuilder.toUrlEncoding += """
 if (${param.name} != null) {
-  queryParams.add((name: '${param.name}', value: $converter.toUrlEncoding(${param.name}!)));
+  queryParams.add((name: '${param.name}', value: base.toUrlEncoding<${param.type}>($converters, ${param.name}!)));
 }
 """;
   } else {
     routeBuilder.toUrlEncoding += """
-queryParams.add((name: '${param.name}', value: $converter.toUrlEncoding(${param.name})));
+queryParams.add((name: '${param.name}', value: base.toUrlEncoding<${param.type}>($converters, ${param.name})));
 """;
   }
 }
@@ -333,7 +323,6 @@ class BuildContext {
   String routes = "";
   String imports = "";
   String currentIs = "";
-  String customConverters = "";
 
   String get source {
     imports.trim();
@@ -352,10 +341,7 @@ export 'package:flutter/material.dart' show BuildContext, Widget, Placeholder, S
 
 $routes
 
-const intConverter = base.IntConverter();
-const stringConverter = base.StringConverter();
-const boolConverter = base.BoolConverter();
-const doubleConverter = base.DoubleConverter();
+const builtInConverters = <base.Converter>[base.IntConverter(), base.StringConverter(), base.BoolConverter(), base.DoubleConverter()];
 
 bool currentIs<T extends base.Route>(String location) {
   location = location.split("?")[0];
