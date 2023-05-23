@@ -20,40 +20,6 @@ List<Route> extractRoutes() {
   return routes;
 }
 
-// String extractPath(String input) {
-//   print(input);
-//   print("se");
-//   assert(input.startsWith("+") || input.startsWith("["));
-//   if (input == "+") {
-//     return "/";
-//   }
-//   bool isParam = false;
-//   if (input.startsWith("+")) {
-//     input = input.substring(1);
-//   }
-//   List<String> parts = List.empty(growable: true);
-//   String part = "";
-//   for (final character in input.split("")) {
-//     if (character == "[") {
-//       isParam = true;
-//     } else if (character == "]") {
-//       isParam = false;
-//       parts.add(":${parseParamString(part).name}");
-//       part = "";
-//     } else if (!isParam && character == ";") {
-//       parts.add(part);
-//       part = "";
-//     } else {
-//       part += character;
-//     }
-//   }
-//   if (part.isNotEmpty) {
-//     parts.add(part);
-//   }
-//   print(parts.join("/"));
-//   return parts.join("/");
-// }
-
 Route extractRoute(Directory dir, Route? previous) {
   final dirName = dir.name;
   final dirPath = split(dir.path).skip(1).join("/"); //skips lib
