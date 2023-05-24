@@ -4,6 +4,7 @@ import 'extensions/string.dart';
 import 'params.dart';
 import 'routes.dart';
 import 'extensions/io.dart';
+import "package:pubspec_parse/pubspec_parse.dart";
 
 List<Param> getAncestorParams(RegularRoute topRoute) {
   List<Param> params = List.empty(growable: true);
@@ -46,7 +47,7 @@ String? getPreviousRouteName(RegularRoute topRoute) {
 }
 
 void generateSource(List<Route> routes) {
-  final context = BuildContext();
+  final context = BuildContext.readProjectName();
   addCustomTypes(context);
   for (final route in routes) {
     generateRouteSource(context, route);
@@ -319,10 +320,19 @@ class RouteBuilder {
 }
 
 class BuildContext {
+  BuildContext(this.projectName);
+
   String routeTree = "";
   String routes = "";
   String imports = "";
   String currentIs = "";
+  final String projectName;
+
+  factory BuildContext.readProjectName() {
+    final yaml = File("pubspec.yaml").readAsStringSync();
+    final pubspec = Pubspec.parse(yaml);
+    return BuildContext(pubspec.name);
+  }
 
   String get source {
     imports.trim();
