@@ -32,7 +32,7 @@ String createLocation(
   }
 }
 
-R getRoute<R extends Route>(Route topRoute) {
+R? getRoute<R extends Route>(Route topRoute) {
   Route? route = topRoute;
   while (route != null) {
     if (route is R) {
@@ -40,7 +40,7 @@ R getRoute<R extends Route>(Route topRoute) {
     }
     route = route.previous;
   }
-  throw Exception("The given Route could not be find.");
+  return route as R?;
 }
 
 class FileRouter extends GoRouter {
@@ -152,6 +152,24 @@ abstract class StatefulShell extends StatefulWidget {
 abstract class Converter<T> {
   String toUrlEncoding(T data);
   T fromUrlEncoding(String data);
+}
+
+T fromUrlEncoding<T>(List<Converter> customConverters, String data) {
+  for (final converter in customConverters) {
+    if (converter is Converter<T>) {
+      return converter.fromUrlEncoding(data);
+    }
+  }
+  throw Exception("fromUrlEncoding could not find a converter for the type $T");
+}
+
+String toUrlEncoding<T>(List<Converter> customConverters, T data) {
+  for (final converter in customConverters) {
+    if (converter is Converter<T>) {
+      return converter.toUrlEncoding(data);
+    }
+  }
+  throw Exception("toUrlEncoding could not find a converter for the type $T");
 }
 
 class IntConverter implements Converter<int> {
