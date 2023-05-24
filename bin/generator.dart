@@ -57,14 +57,13 @@ void generateSource(List<Route> routes) {
   file.writeAsStringSync(context.source);
 }
 
-void generatePage(Route route) {
+void generatePage(Route route, BuildContext context) {
   final relativePath = joinAll(route.filePath.split("/"));
-  final projectName = basename(Directory.current.path);
   final file = File(join(Directory.current.path, "lib", relativePath));
   if (file.containsClass(route.name)) {
     return;
   }
-  file.addImport("package:$projectName/file_router.dart");
+  file.addImport("package:${context.projectName}/file_router.dart");
   switch (route.runtimeType) {
     case RegularRoute:
       file.insertAfterImports("""
@@ -121,7 +120,7 @@ class ${route.name} extends StatelessShell {
 
 void generateRouteSource(BuildContext context, Route route) {
   context.addFileImport(route.filePath);
-  generatePage(route);
+  generatePage(route, context);
   if (route is ShellRoute) {
     context.routeTree += """
 base.ShellRoute(
