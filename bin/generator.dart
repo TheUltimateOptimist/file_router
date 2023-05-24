@@ -369,7 +369,6 @@ final routerData = base.FileRouterData(
   }
 
   void addFileImport(String path, {String additional = ""}) {
-    final projectName = Directory.current.name;
     imports += "\nimport 'package:$projectName/$path'$additional;";
   }
 }
