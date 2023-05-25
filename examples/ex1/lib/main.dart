@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ex1/file_router.dart';
 
 void main() {
+  print("main func");
   runApp(MyApp());
 }
 

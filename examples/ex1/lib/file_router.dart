@@ -6,32 +6,46 @@
 import 'package:flutter/material.dart';
 import 'package:file_router/file_router.dart' as base;
 
+import 'package:ex1/types.dart';
 import 'package:ex1/routes/{RootShell}/{RootShell}.dart';
-import 'package:ex1/routes/{RootShell}/+|/+HomePage.dart';
-import 'package:ex1/routes/{RootShell}/+|/+about/+AboutPage.dart';
-import 'package:ex1/routes/{RootShell}/+|/+cars/+CarsPage.dart';
-import 'package:ex1/routes/{RootShell}/+|/+cars/:int;carId/+CarPage.dart';
+import 'package:ex1/routes/{RootShell}/+%/+HomePage.dart';
+import 'package:ex1/routes/{RootShell}/+%/1-IntList;numbers%%.dart' as HomePageRoute_numbers;
+import 'package:ex1/routes/{RootShell}/+%/+about/+AboutPage.dart';
+import 'package:ex1/routes/{RootShell}/+%/+cars/+CarsPage.dart';
+import 'package:ex1/routes/{RootShell}/+%/+cars/[int;carId]/+CarPage.dart';
 
 export 'package:file_router/file_router.dart';
 export 'package:flutter/material.dart' show BuildContext, Widget, Placeholder, State;
 
 class HomePageRoute implements base.Route {
   const HomePageRoute({
+    this.numbers = HomePageRoute_numbers.defaultValue,
     this.age = 3,
   }) : previous = null;
 
   static HomePageRoute _fromGoRouterState(base.GoRouterState state) {
-    return HomePageRoute();
+    final IntList numbers;
+    if (state.queryParams['numbers'] != null) {
+      numbers = base.fromUrlEncoding<IntList>(converters, state.queryParams['numbers']!);
+    } else {
+      numbers = HomePageRoute_numbers.defaultValue;
+    }
+
+    return HomePageRoute(
+      numbers: numbers,
+    );
   }
 
   @override
   final base.Route? previous;
 
+  final IntList numbers;
   final int age;
 
   @override
   String get location {
     final List<({String name, String value})> queryParams = List.empty(growable: true);
+    queryParams.add((name: 'numbers', value: base.toUrlEncoding<IntList>(converters, numbers)));
 
     return base.createLocation('/', queryParams, previous);
   }
@@ -48,16 +62,17 @@ class AboutPageRoute implements base.Route {
   });
 
   static AboutPageRoute _fromGoRouterState(base.GoRouterState state) {
-    final id = int_converter.fromUrlEncoding(state.queryParams['id']!);
-    final isAdmin = bool_converter.fromUrlEncoding(state.queryParams['isAdmin']!);
+    final id = base.fromUrlEncoding<int>(builtInConverters, state.queryParams['id']!);
+    final isAdmin = base.fromUrlEncoding<bool>(builtInConverters, state.queryParams['isAdmin']!);
     final int? parentAge;
     if (state.queryParams['parentAge'] != null) {
-      parentAge = int_converter.fromUrlEncoding(state.queryParams['parentAge']!);
+      parentAge = base.fromUrlEncoding<int?>(builtInConverters, state.queryParams['parentAge']!);
     } else {
       parentAge = null;
     }
-    final percentage = double_converter.fromUrlEncoding(state.queryParams['percentage']!);
-    final name = String_converter.fromUrlEncoding(state.queryParams['name']!);
+    final percentage =
+        base.fromUrlEncoding<double>(builtInConverters, state.queryParams['percentage']!);
+    final name = base.fromUrlEncoding<String>(builtInConverters, state.queryParams['name']!);
     return AboutPageRoute(
       HomePageRoute._fromGoRouterState(state),
       id: id,
@@ -80,16 +95,23 @@ class AboutPageRoute implements base.Route {
   @override
   String get location {
     final List<({String name, String value})> queryParams = List.empty(growable: true);
-    queryParams.add((name: 'id', value: int_converter.toUrlEncoding(id)));
-    queryParams.add((name: 'isAdmin', value: bool_converter.toUrlEncoding(isAdmin)));
+    queryParams.add((name: 'id', value: base.toUrlEncoding<int>(builtInConverters, id)));
+    queryParams.add((name: 'isAdmin', value: base.toUrlEncoding<bool>(builtInConverters, isAdmin)));
     if (parentAge != null) {
-      queryParams.add((name: 'parentAge', value: int_converter.toUrlEncoding(parentAge!)));
+      queryParams
+          .add((name: 'parentAge', value: base.toUrlEncoding<int?>(builtInConverters, parentAge!)));
     }
-    queryParams.add((name: 'percentage', value: double_converter.toUrlEncoding(percentage)));
-    queryParams.add((name: 'name', value: String_converter.toUrlEncoding(name)));
+    queryParams.add(
+        (name: 'percentage', value: base.toUrlEncoding<double>(builtInConverters, percentage)));
+    queryParams.add((name: 'name', value: base.toUrlEncoding<String>(builtInConverters, name)));
 
     return base.createLocation('about', queryParams, previous);
   }
+
+  HomePageRoute get homePageRoute => previous;
+
+  IntList get numbers => previous.numbers;
+  int get age => previous.age;
 }
 
 class CarsPageRoute implements base.Route {
@@ -112,6 +134,11 @@ class CarsPageRoute implements base.Route {
 
     return base.createLocation('cars', queryParams, previous);
   }
+
+  HomePageRoute get homePageRoute => previous;
+
+  IntList get numbers => previous.numbers;
+  int get age => previous.age;
 }
 
 class CarPageRoute implements base.Route {
@@ -121,7 +148,7 @@ class CarPageRoute implements base.Route {
   );
 
   static CarPageRoute _fromGoRouterState(base.GoRouterState state) {
-    final carId = int_converter.fromUrlEncoding(state.params['carId']!);
+    final carId = base.fromUrlEncoding<int>(builtInConverters, state.params['carId']!);
     return CarPageRoute(
       CarsPageRoute._fromGoRouterState(state),
       carId,
@@ -137,15 +164,23 @@ class CarPageRoute implements base.Route {
   String get location {
     final List<({String name, String value})> queryParams = List.empty(growable: true);
 
-    final carId = int_converter.toUrlEncoding(this.carId);
+    final carId = base.toUrlEncoding<int>(builtInConverters, this.carId);
     return base.createLocation('$carId', queryParams, previous);
   }
+
+  CarsPageRoute get carsPageRoute => previous;
+  HomePageRoute get homePageRoute => previous.previous;
+
+  IntList get numbers => previous.previous.numbers;
+  int get age => previous.previous.age;
 }
 
-const int_converter = base.IntConverter();
-const String_converter = base.StringConverter();
-const bool_converter = base.BoolConverter();
-const double_converter = base.DoubleConverter();
+const builtInConverters = <base.Converter>[
+  base.IntConverter(),
+  base.StringConverter(),
+  base.BoolConverter(),
+  base.DoubleConverter()
+];
 
 bool currentIs<T extends base.Route>(String location) {
   location = location.split("?")[0];
@@ -177,7 +212,10 @@ final routerData = base.FileRouterData(
           path: '/',
           builder: (BuildContext context, base.GoRouterState state) {
             if (state.extra != null) {
-              return HomePage(base.getRoute<HomePageRoute>(state.extra as base.Route));
+              final route = base.getRoute<HomePageRoute>(state.extra as base.Route);
+              if (route != null) {
+                return HomePage(route);
+              }
             }
             return HomePage(HomePageRoute._fromGoRouterState(state));
           },
@@ -186,7 +224,10 @@ final routerData = base.FileRouterData(
               path: 'about',
               builder: (BuildContext context, base.GoRouterState state) {
                 if (state.extra != null) {
-                  return AboutPage(base.getRoute<AboutPageRoute>(state.extra as base.Route));
+                  final route = base.getRoute<AboutPageRoute>(state.extra as base.Route);
+                  if (route != null) {
+                    return AboutPage(route);
+                  }
                 }
                 return AboutPage(AboutPageRoute._fromGoRouterState(state));
               },
@@ -195,7 +236,10 @@ final routerData = base.FileRouterData(
               path: 'cars',
               builder: (BuildContext context, base.GoRouterState state) {
                 if (state.extra != null) {
-                  return CarsPage(base.getRoute<CarsPageRoute>(state.extra as base.Route));
+                  final route = base.getRoute<CarsPageRoute>(state.extra as base.Route);
+                  if (route != null) {
+                    return CarsPage(route);
+                  }
                 }
                 return CarsPage(CarsPageRoute._fromGoRouterState(state));
               },
@@ -204,7 +248,10 @@ final routerData = base.FileRouterData(
                   path: ':carId',
                   builder: (BuildContext context, base.GoRouterState state) {
                     if (state.extra != null) {
-                      return CarPage(base.getRoute<CarPageRoute>(state.extra as base.Route));
+                      final route = base.getRoute<CarPageRoute>(state.extra as base.Route);
+                      if (route != null) {
+                        return CarPage(route);
+                      }
                     }
                     return CarPage(CarPageRoute._fromGoRouterState(state));
                   },
