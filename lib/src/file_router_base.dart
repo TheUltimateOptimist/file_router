@@ -8,6 +8,16 @@ abstract class Route {
   Route? get previous;
 }
 
+typedef FileRouterRedirect<T extends Route> = FutureOr<Route?> Function(BuildContext, T);
+typedef FromGoRouterState<T extends Route> = T Function(GoRouterState);
+GoRouterRedirect getRedirect<T extends Route>(
+    FileRouterRedirect<T> fileRouterRedirect, FromGoRouterState<T> fromGoRouterState) {
+  return (BuildContext context, GoRouterState state) async {
+    final route = await fileRouterRedirect(context, fromGoRouterState(state));
+    return route?.location;
+  };
+}
+
 String createLocation(
     String relativeUrl, List<({String name, String value})> queryParams, Route? previous) {
   String topQueryString =

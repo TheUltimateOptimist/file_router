@@ -11,6 +11,7 @@ import 'package:ex1/routes/{RootShell}/{RootShell}.dart';
 import 'package:ex1/routes/{RootShell}/+%/+HomePage.dart';
 import 'package:ex1/routes/{RootShell}/+%/1-IntList;numbers%%.dart' as HomePageRoute_numbers;
 import 'package:ex1/routes/{RootShell}/+%/+about/+AboutPage.dart';
+import 'package:ex1/routes/{RootShell}/+%/+about/+redirect.dart' as aboutPageRedirect;
 import 'package:ex1/routes/{RootShell}/+%/+cars/+CarsPage.dart';
 import 'package:ex1/routes/{RootShell}/+%/+cars/[int;carId]/+CarPage.dart';
 
@@ -23,7 +24,13 @@ class HomePageRoute implements base.Route {
     this.age = 3,
   }) : previous = null;
 
-  static HomePageRoute _fromGoRouterState(base.GoRouterState state) {
+  static HomePageRoute fromGoRouterState(base.GoRouterState state) {
+    if (state.extra != null) {
+      final route = base.getRoute<HomePageRoute>(state.extra as base.Route);
+      if (route != null) {
+        return route;
+      }
+    }
     final IntList numbers;
     if (state.queryParams['numbers'] != null) {
       numbers = base.fromUrlEncoding<IntList>(converters, state.queryParams['numbers']!);
@@ -61,7 +68,14 @@ class AboutPageRoute implements base.Route {
     required this.name,
   });
 
-  static AboutPageRoute _fromGoRouterState(base.GoRouterState state) {
+  static AboutPageRoute fromGoRouterState(base.GoRouterState state) {
+    if (state.extra != null) {
+      final route = base.getRoute<AboutPageRoute>(state.extra as base.Route);
+      if (route != null) {
+        return route;
+      }
+    }
+
     final id = base.fromUrlEncoding<int>(builtInConverters, state.queryParams['id']!);
     final isAdmin = base.fromUrlEncoding<bool>(builtInConverters, state.queryParams['isAdmin']!);
     final int? parentAge;
@@ -74,7 +88,7 @@ class AboutPageRoute implements base.Route {
         base.fromUrlEncoding<double>(builtInConverters, state.queryParams['percentage']!);
     final name = base.fromUrlEncoding<String>(builtInConverters, state.queryParams['name']!);
     return AboutPageRoute(
-      HomePageRoute._fromGoRouterState(state),
+      HomePageRoute.fromGoRouterState(state),
       id: id,
       isAdmin: isAdmin,
       parentAge: parentAge,
@@ -119,9 +133,16 @@ class CarsPageRoute implements base.Route {
     this.previous,
   );
 
-  static CarsPageRoute _fromGoRouterState(base.GoRouterState state) {
+  static CarsPageRoute fromGoRouterState(base.GoRouterState state) {
+    if (state.extra != null) {
+      final route = base.getRoute<CarsPageRoute>(state.extra as base.Route);
+      if (route != null) {
+        return route;
+      }
+    }
+
     return CarsPageRoute(
-      HomePageRoute._fromGoRouterState(state),
+      HomePageRoute.fromGoRouterState(state),
     );
   }
 
@@ -147,10 +168,17 @@ class CarPageRoute implements base.Route {
     this.carId,
   );
 
-  static CarPageRoute _fromGoRouterState(base.GoRouterState state) {
+  static CarPageRoute fromGoRouterState(base.GoRouterState state) {
+    if (state.extra != null) {
+      final route = base.getRoute<CarPageRoute>(state.extra as base.Route);
+      if (route != null) {
+        return route;
+      }
+    }
+
     final carId = base.fromUrlEncoding<int>(builtInConverters, state.params['carId']!);
     return CarPageRoute(
-      CarsPageRoute._fromGoRouterState(state),
+      CarsPageRoute.fromGoRouterState(state),
       carId,
     );
   }
@@ -211,49 +239,27 @@ final routerData = base.FileRouterData(
         base.GoRoute(
           path: '/',
           builder: (BuildContext context, base.GoRouterState state) {
-            if (state.extra != null) {
-              final route = base.getRoute<HomePageRoute>(state.extra as base.Route);
-              if (route != null) {
-                return HomePage(route);
-              }
-            }
-            return HomePage(HomePageRoute._fromGoRouterState(state));
+            return HomePage(HomePageRoute.fromGoRouterState(state));
           },
           routes: [
             base.GoRoute(
               path: 'about',
               builder: (BuildContext context, base.GoRouterState state) {
-                if (state.extra != null) {
-                  final route = base.getRoute<AboutPageRoute>(state.extra as base.Route);
-                  if (route != null) {
-                    return AboutPage(route);
-                  }
-                }
-                return AboutPage(AboutPageRoute._fromGoRouterState(state));
+                return AboutPage(AboutPageRoute.fromGoRouterState(state));
               },
+              redirect: base.getRedirect<AboutPageRoute>(
+                  aboutPageRedirect.redirect, AboutPageRoute.fromGoRouterState),
             ),
             base.GoRoute(
               path: 'cars',
               builder: (BuildContext context, base.GoRouterState state) {
-                if (state.extra != null) {
-                  final route = base.getRoute<CarsPageRoute>(state.extra as base.Route);
-                  if (route != null) {
-                    return CarsPage(route);
-                  }
-                }
-                return CarsPage(CarsPageRoute._fromGoRouterState(state));
+                return CarsPage(CarsPageRoute.fromGoRouterState(state));
               },
               routes: [
                 base.GoRoute(
                   path: ':carId',
                   builder: (BuildContext context, base.GoRouterState state) {
-                    if (state.extra != null) {
-                      final route = base.getRoute<CarPageRoute>(state.extra as base.Route);
-                      if (route != null) {
-                        return CarPage(route);
-                      }
-                    }
-                    return CarPage(CarPageRoute._fromGoRouterState(state));
+                    return CarPage(CarPageRoute.fromGoRouterState(state));
                   },
                 ),
               ],

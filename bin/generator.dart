@@ -192,10 +192,17 @@ base.ShellRoute(
 class $routeName implements base.Route {
   const $routeName(${previousRouteName != null ? 'this.previous, ' : ''}${routeBuilder.constructor})$settingPrevious;
 
-  static $routeName _fromGoRouterState(base.GoRouterState state) {
+  static $routeName fromGoRouterState(base.GoRouterState state) {
+    if (state.extra != null) {
+      final route = base.getRoute<$routeName>(state.extra as base.Route);
+      if (route != null) {
+        return route;
+      }
+    }
     ${routeBuilder.fromUrlEncoding}
-    return $constString$routeName(${previousRouteName != null ? '$previousRouteName._fromGoRouterState(state), ' : ''}${routeBuilder.instantiation});
+    return $constString$routeName(${previousRouteName != null ? '$previousRouteName.fromGoRouterState(state), ' : ''}${routeBuilder.instantiation});
   }
+
   @override
   final ${previousRouteName ?? 'base.Route?'} previous;
   ${routeBuilder.declarations}
@@ -220,16 +227,14 @@ if (T == $routeName) {
 base.GoRoute(
   path: '${route.relativeUrl}',
   builder: (BuildContext context, base.GoRouterState state) {
-    if (state.extra != null) {
-      final route = base.getRoute<$routeName>(state.extra as base.Route);
-      if (route != null) {
-        return ${route.name}(route);
-      }
-    }
-    return ${route.name}($routeName._fromGoRouterState(state));
+
+    return ${route.name}($routeName.fromGoRouterState(state));
   },
-  ${route.children.isEmpty ? '' : 'routes: ['}
 """;
+    addRedirect(context, route);
+    if (route.children.isNotEmpty) {
+      context.routeTree += "routes: [";
+    }
   }
   for (final child in route.children) {
     generateRouteSource(context, child);
@@ -238,6 +243,27 @@ base.GoRoute(
     context.routeTree += "],";
   }
   context.routeTree += "),";
+}
+
+void addRedirect(BuildContext context, RegularRoute route) {
+  final file = File(join("lib", joinAll(route.folderPath.split("/")), "+redirect.dart"));
+  if (file.existsSync()) {
+    final routeName = "${route.name}Route";
+    if (file.readAsStringSync().trim().isEmpty) {
+      file.writeAsStringSync("""
+import 'dart:async';
+import 'package:${context.projectName}/file_router.dart';
+
+FutureOr<Route?> redirect(BuildContext context, $routeName route) {
+  return null;
+}
+""");
+    }
+    final importAs = "${route.name.uncapitalize()}Redirect";
+    context.addFileImport("${route.folderPath}/+redirect.dart", additional: " as $importAs");
+    context.routeTree +=
+        "redirect: base.getRedirect<$routeName>($importAs.redirect, $routeName.fromGoRouterState),";
+  }
 }
 
 void addCustomTypes(BuildContext context) {

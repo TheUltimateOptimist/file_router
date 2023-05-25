@@ -33,8 +33,10 @@ Route extractRoute(Directory dir, Route? previous) {
       return part;
     }).join("/");
     final params = extractParams(dir);
-    final pageFile =
-        dir.listSync().whereType<File>().singleWhere((file) => file.name.startsWith("+"));
+    final pageFile = dir
+        .listSync()
+        .whereType<File>()
+        .singleWhere((file) => file.name.startsWith("+") && file.name != "+redirect.dart");
     route = RegularRoute(dirPath, pageFile.name, previous, relativeUrl, params);
   } else if (dirName.startsWith("{")) {
     final shellFile =
