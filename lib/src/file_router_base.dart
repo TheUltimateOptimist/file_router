@@ -18,6 +18,14 @@ GoRouterRedirect getRedirect<T extends Route>(
   };
 }
 
+typedef FileRouterErrorBuilder = Widget Function(BuildContext, Route);
+GoRouterWidgetBuilder getErrorBuilder(FileRouterErrorBuilder fileRouterErrorBuilder) {
+  return (BuildContext context, GoRouterState state) {
+    final route = context.currentRoute(state);
+    return fileRouterErrorBuilder(context, route);
+  };
+}
+
 String createLocation(
     String relativeUrl, List<({String name, String value})> queryParams, Route? previous) {
   String topQueryString =

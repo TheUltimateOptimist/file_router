@@ -6,20 +6,24 @@ class CarPage extends StatelessPage<CarPageRoute> {
 
   @override
   Widget build(BuildContext context) {
+    if (route.carId == 1) {
+      throw Exception("test exception");
+    }
     return Scaffold(
-        body: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text("car id: ${route.carId}"),
-          ElevatedButton(
-            child: const Text("Cars"),
-            onPressed: () {
-              context.pop();
-            },
-          ),
-        ],
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text("car id: ${route.carId}"),
+            ElevatedButton(
+              child: const Text("Cars"),
+              onPressed: () {
+                context.pop();
+              },
+            ),
+          ],
+        ),
       ),
-    ));
+    );
   }
 }

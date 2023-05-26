@@ -48,6 +48,7 @@ String? getPreviousRouteName(RegularRoute topRoute) {
 
 void generateSource(List<Route> routes) {
   final context = BuildContext.readProjectName();
+  addErrorBuilder(context);
   addCustomTypes(context);
   for (final route in routes) {
     generateRouteSource(context, route);
@@ -57,10 +58,24 @@ void generateSource(List<Route> routes) {
   file.writeAsStringSync(context.source);
 }
 
-// void addErrorPage(BuildContext context) {
-//   final file = File(join("lib", "routes", "+error.dart"));
-//   if
-// }
+void addErrorBuilder(BuildContext context) {
+  final file = File(join("lib", "routes", "+error.dart"));
+  if (file.existsSync()) {
+    if (file.readAsStringSync().trim().isEmpty) {
+      file.writeAsStringSync("""
+import 'package:${context.projectName}/file_router.dart';
+
+Widget error(BuildContext context, Route route) {
+  return const Placeholder();
+}
+""");
+    }
+    context.addFileImport("routes/+error.dart");
+    context.errorPageBuilder = "errorBuilder: base.getErrorBuilder(error),";
+  } else {
+    context.errorPageBuilder = "errorBuilder: null,";
+  }
+}
 
 void generatePage(Route route, BuildContext context) {
   final relativePath = joinAll(route.filePath.split("/"));
@@ -363,6 +378,7 @@ class BuildContext {
   String imports = "";
   String currentRouteIs = "";
   String currentRoute = "";
+  String errorPageBuilder = "";
   final String projectName;
 
   factory BuildContext.readProjectName() {
@@ -402,6 +418,7 @@ base.Route currentRoute(base.GoRouterState state) {
 }
 
 final routerData = base.FileRouterData(
+  $errorPageBuilder
   currentRouteIs: currentRouteIs,
   currentRoute: currentRoute,
   routes: [

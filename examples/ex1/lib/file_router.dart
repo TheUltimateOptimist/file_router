@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_router/file_router.dart' as base;
 
+import 'package:ex1/routes/+error.dart';
 import 'package:ex1/types.dart';
 import 'package:ex1/routes/{RootShell}/{RootShell}.dart';
 import 'package:ex1/routes/{RootShell}/+%/+HomePage.dart';
@@ -246,6 +247,7 @@ base.Route currentRoute(base.GoRouterState state) {
 }
 
 final routerData = base.FileRouterData(
+  errorBuilder: base.getErrorBuilder(error),
   currentRouteIs: currentRouteIs,
   currentRoute: currentRoute,
   routes: [

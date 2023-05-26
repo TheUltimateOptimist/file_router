@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:ex1/file_router.dart';
 
 void main() {
-  print("main func");
   runApp(MyApp());
 }
 
@@ -16,6 +15,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print(routerData.errorBuilder);
     return MaterialApp.router(
       title: 'Flutter Demo',
       theme: ThemeData(
