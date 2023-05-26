@@ -75,8 +75,12 @@ class FileRouter extends GoRouter {
   final FileRouterData data;
   final Route initialRoute;
 
-  bool currentIs<T extends Route>() {
-    return data.currentIs<T>(location);
+  bool currentRouteIs<T extends Route>() {
+    return data.currentRouteIs<T>(location);
+  }
+
+  Route currentRoute(GoRouterState state) {
+    return data.currentRoute(state);
   }
 
   void goRoute<R extends Route>(R route) {
@@ -117,13 +121,16 @@ extension FileRouterExtension on BuildContext {
     FileRouter.of(this).replaceRoute(route);
   }
 
-  bool currentIs<T extends Route>() => FileRouter.of(this).currentIs<T>();
+  bool currentRouteIs<T extends Route>() => FileRouter.of(this).currentRouteIs<T>();
+
+  Route currentRoute(GoRouterState state) => FileRouter.of(this).currentRoute(state);
 }
 
 class FileRouterData {
   const FileRouterData({
     required this.routes,
-    required this.currentIs,
+    required this.currentRouteIs,
+    required this.currentRoute,
     this.errorBuilder,
     this.errorPageBuilder,
     this.redirect,
@@ -132,7 +139,8 @@ class FileRouterData {
   final Widget Function(BuildContext, GoRouterState)? errorBuilder;
   final Page<dynamic> Function(BuildContext, GoRouterState)? errorPageBuilder;
   final FutureOr<String?> Function(BuildContext, GoRouterState)? redirect;
-  final bool Function<T extends Route>(String) currentIs;
+  final bool Function<T extends Route>(String) currentRouteIs;
+  final Route Function(GoRouterState) currentRoute;
 }
 
 abstract class StatelessPage<T extends Route> extends StatelessWidget {

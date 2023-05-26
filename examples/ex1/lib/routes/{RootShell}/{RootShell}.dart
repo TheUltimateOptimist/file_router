@@ -8,9 +8,9 @@ class RootShell extends StatelessShell {
   @override
   Widget build(BuildContext context) {
     int currentIndex = 0;
-    if (context.currentIs<AboutPageRoute>()) {
+    if (context.currentRouteIs<AboutPageRoute>()) {
       currentIndex = 1;
-    } else if (context.currentIs<CarsPageRoute>() || context.currentIs<CarPageRoute>()) {
+    } else if (context.currentRouteIs<CarsPageRoute>() || context.currentRouteIs<CarPageRoute>()) {
       currentIndex = 2;
     }
     return Scaffold(

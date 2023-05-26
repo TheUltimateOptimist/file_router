@@ -210,7 +210,7 @@ const builtInConverters = <base.Converter>[
   base.DoubleConverter()
 ];
 
-bool currentIs<T extends base.Route>(String location) {
+bool currentRouteIs<T extends base.Route>(String location) {
   location = location.split("?")[0];
   if (T == HomePageRoute) {
     return base.isAPair('/', location);
@@ -228,8 +228,26 @@ bool currentIs<T extends base.Route>(String location) {
   throw Exception("Route detection failure");
 }
 
+base.Route currentRoute(base.GoRouterState state) {
+  if (currentRouteIs<HomePageRoute>(state.location)) {
+    return HomePageRoute.fromGoRouterState(state);
+  }
+  if (currentRouteIs<AboutPageRoute>(state.location)) {
+    return AboutPageRoute.fromGoRouterState(state);
+  }
+  if (currentRouteIs<CarsPageRoute>(state.location)) {
+    return CarsPageRoute.fromGoRouterState(state);
+  }
+  if (currentRouteIs<CarPageRoute>(state.location)) {
+    return CarPageRoute.fromGoRouterState(state);
+  }
+
+  throw Exception("Route retrieval failure");
+}
+
 final routerData = base.FileRouterData(
-  currentIs: currentIs,
+  currentRouteIs: currentRouteIs,
+  currentRoute: currentRoute,
   routes: [
     base.ShellRoute(
       builder: (BuildContext context, base.GoRouterState state, Widget child) {

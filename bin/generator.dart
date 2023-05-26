@@ -57,6 +57,11 @@ void generateSource(List<Route> routes) {
   file.writeAsStringSync(context.source);
 }
 
+// void addErrorPage(BuildContext context) {
+//   final file = File(join("lib", "routes", "+error.dart"));
+//   if
+// }
+
 void generatePage(Route route, BuildContext context) {
   final relativePath = joinAll(route.filePath.split("/"));
   final file = File(join(Directory.current.path, "lib", relativePath));
@@ -218,10 +223,16 @@ class $routeName implements base.Route {
   ${routeBuilder.fieldGetters}
 }
 """;
-    context.currentIs += """
+    context.currentRouteIs += """
 if (T == $routeName) {
   return base.isAPair('$absoluteUrl', location);
 }  
+""";
+
+    context.currentRoute += """
+if (currentRouteIs<$routeName>(state.location)) {
+  return $routeName.fromGoRouterState(state);
+}
 """;
     context.routeTree += """
 base.GoRoute(
@@ -350,7 +361,8 @@ class BuildContext {
   String routeTree = "";
   String routes = "";
   String imports = "";
-  String currentIs = "";
+  String currentRouteIs = "";
+  String currentRoute = "";
   final String projectName;
 
   factory BuildContext.readProjectName() {
@@ -378,14 +390,20 @@ $routes
 
 const builtInConverters = <base.Converter>[base.IntConverter(), base.StringConverter(), base.BoolConverter(), base.DoubleConverter()];
 
-bool currentIs<T extends base.Route>(String location) {
+bool currentRouteIs<T extends base.Route>(String location) {
   location = location.split("?")[0];
-  $currentIs
+  $currentRouteIs
   throw Exception("Route detection failure");
+}  
+
+base.Route currentRoute(base.GoRouterState state) {
+  $currentRoute
+  throw Exception("Route retrieval failure");
 }
 
 final routerData = base.FileRouterData(
-  currentIs: currentIs,
+  currentRouteIs: currentRouteIs,
+  currentRoute: currentRoute,
   routes: [
     $routeTree
   ],
