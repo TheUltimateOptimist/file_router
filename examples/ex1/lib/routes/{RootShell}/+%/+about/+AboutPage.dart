@@ -11,7 +11,7 @@ class AboutPage extends StatelessPage<AboutPageRoute> {
         children: [
           ElevatedButton(
             onPressed: () {
-              context.goRoute(const HomePageRoute(age: 6));
+              context.goRoute(const HomePageRoute(age: 6, myName: "lol"));
             },
             child: const Text("Back"),
           ),

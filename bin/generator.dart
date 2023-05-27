@@ -208,6 +208,14 @@ base.ShellRoute(
     if (route.previous == null && route.params.isEmpty) {
       constString = "const ";
     }
+    String fromGoRouterState =
+        "throw Exception('The $routeName has required extra parameters. Therefore it can not be instantiated from the location alone.');";
+    if (route.params.whereType<ExtraParam>().every((param) => !param.isRequired)) {
+      fromGoRouterState = """
+${routeBuilder.fromUrlEncoding}
+return $constString$routeName(${previousRouteName != null ? '$previousRouteName.fromGoRouterState(state, context), ' : ''}${routeBuilder.instantiation});
+""";
+    }
     context.routes += """
 class $routeName implements base.Route {
   const $routeName(${previousRouteName != null ? 'this.previous, ' : ''}${routeBuilder.constructor})$settingPrevious;
@@ -220,8 +228,7 @@ class $routeName implements base.Route {
         return route;
       }
     }
-    ${routeBuilder.fromUrlEncoding}
-    return $constString$routeName(${previousRouteName != null ? '$previousRouteName.fromGoRouterState(state, context), ' : ''}${routeBuilder.instantiation});
+    $fromGoRouterState    
   }
 
   @override

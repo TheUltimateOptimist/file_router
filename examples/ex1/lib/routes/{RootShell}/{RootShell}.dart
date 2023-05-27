@@ -25,10 +25,10 @@ class RootShell extends StatelessShell {
         onTap: (value) {
           switch (value) {
             case 0:
-              return context.goRoute(const HomePageRoute(age: 4));
+              return context.goRoute(const HomePageRoute(age: 4, myName: "hans"));
             case 1:
               return context.goRoute(const AboutPageRoute(
-                HomePageRoute(),
+                HomePageRoute(myName: "lisa"),
                 id: 23,
                 name: "Jonathan",
                 isAdmin: true,
@@ -37,7 +37,7 @@ class RootShell extends StatelessShell {
             case 2:
               return context.goRoute(
                 const CarsPageRoute(
-                  HomePageRoute(),
+                  HomePageRoute(myName: "some"),
                 ),
               );
           }

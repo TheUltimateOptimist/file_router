@@ -10,7 +10,7 @@ class MyApp extends StatelessWidget {
 
   final fileRouter = FileRouter(
     routerData,
-    initialRoute: const HomePageRoute(age: 104),
+    initialRoute: const HomePageRoute(age: 104, myName: "Jonathan"),
   );
 
   @override

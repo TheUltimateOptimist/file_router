@@ -1,2 +1,0 @@
-const number = 3;
-
