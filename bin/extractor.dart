@@ -121,8 +121,13 @@ List<Param> extractUrlParams(String folderName) {
 
 ({String name, String type}) parseParamString(String input) {
   final parts = input.split(";");
+  String type = parts[0];
+  //neccessary because windows does not allow "?" as part of filenames
+  if (type.endsWith("N")) {
+    type = "${type.substring(0, type.length - 1)}?";
+  }
   return (
     name: parts.length > 1 ? parts[1] : parts[0].uncapitalize(),
-    type: parts[0],
+    type: type,
   );
 }
