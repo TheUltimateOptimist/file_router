@@ -25,13 +25,15 @@ class HomePageRoute implements base.Route {
     this.age = 3,
   }) : previous = null;
 
-  static HomePageRoute fromGoRouterState(base.GoRouterState state) {
-    if (state.extra != null) {
-      final route = base.getRoute<HomePageRoute>(state.extra as base.Route);
+  static HomePageRoute fromGoRouterState(base.GoRouterState state, BuildContext context) {
+    final storedRoute = base.InheritedRoute.of(context).route;
+    if (storedRoute != null) {
+      final route = base.getRoute<HomePageRoute>(storedRoute);
       if (route != null) {
         return route;
       }
     }
+    print("is examining");
     final IntList numbers;
     if (state.queryParams['numbers'] != null) {
       numbers = base.fromUrlEncoding<IntList>(converters, state.queryParams['numbers']!);
@@ -69,9 +71,10 @@ class AboutPageRoute implements base.Route {
     required this.name,
   });
 
-  static AboutPageRoute fromGoRouterState(base.GoRouterState state) {
-    if (state.extra != null) {
-      final route = base.getRoute<AboutPageRoute>(state.extra as base.Route);
+  static AboutPageRoute fromGoRouterState(base.GoRouterState state, BuildContext context) {
+    final storedRoute = base.InheritedRoute.of(context).route;
+    if (storedRoute != null) {
+      final route = base.getRoute<AboutPageRoute>(storedRoute);
       if (route != null) {
         return route;
       }
@@ -89,7 +92,7 @@ class AboutPageRoute implements base.Route {
         base.fromUrlEncoding<double>(builtInConverters, state.queryParams['percentage']!);
     final name = base.fromUrlEncoding<String>(builtInConverters, state.queryParams['name']!);
     return AboutPageRoute(
-      HomePageRoute.fromGoRouterState(state),
+      HomePageRoute.fromGoRouterState(state, context),
       id: id,
       isAdmin: isAdmin,
       parentAge: parentAge,
@@ -134,16 +137,17 @@ class CarsPageRoute implements base.Route {
     this.previous,
   );
 
-  static CarsPageRoute fromGoRouterState(base.GoRouterState state) {
-    if (state.extra != null) {
-      final route = base.getRoute<CarsPageRoute>(state.extra as base.Route);
+  static CarsPageRoute fromGoRouterState(base.GoRouterState state, BuildContext context) {
+    final storedRoute = base.InheritedRoute.of(context).route;
+    if (storedRoute != null) {
+      final route = base.getRoute<CarsPageRoute>(storedRoute);
       if (route != null) {
         return route;
       }
     }
 
     return CarsPageRoute(
-      HomePageRoute.fromGoRouterState(state),
+      HomePageRoute.fromGoRouterState(state, context),
     );
   }
 
@@ -169,9 +173,10 @@ class CarPageRoute implements base.Route {
     this.carId,
   );
 
-  static CarPageRoute fromGoRouterState(base.GoRouterState state) {
-    if (state.extra != null) {
-      final route = base.getRoute<CarPageRoute>(state.extra as base.Route);
+  static CarPageRoute fromGoRouterState(base.GoRouterState state, BuildContext context) {
+    final storedRoute = base.InheritedRoute.of(context).route;
+    if (storedRoute != null) {
+      final route = base.getRoute<CarPageRoute>(storedRoute);
       if (route != null) {
         return route;
       }
@@ -179,7 +184,7 @@ class CarPageRoute implements base.Route {
 
     final carId = base.fromUrlEncoding<int>(builtInConverters, state.params['carId']!);
     return CarPageRoute(
-      CarsPageRoute.fromGoRouterState(state),
+      CarsPageRoute.fromGoRouterState(state, context),
       carId,
     );
   }
@@ -229,18 +234,18 @@ bool currentRouteIs<T extends base.Route>(String location) {
   throw Exception("Route detection failure");
 }
 
-base.Route currentRoute(base.GoRouterState state) {
+base.Route currentRoute(base.GoRouterState state, BuildContext context) {
   if (currentRouteIs<HomePageRoute>(state.location)) {
-    return HomePageRoute.fromGoRouterState(state);
+    return HomePageRoute.fromGoRouterState(state, context);
   }
   if (currentRouteIs<AboutPageRoute>(state.location)) {
-    return AboutPageRoute.fromGoRouterState(state);
+    return AboutPageRoute.fromGoRouterState(state, context);
   }
   if (currentRouteIs<CarsPageRoute>(state.location)) {
-    return CarsPageRoute.fromGoRouterState(state);
+    return CarsPageRoute.fromGoRouterState(state, context);
   }
   if (currentRouteIs<CarPageRoute>(state.location)) {
-    return CarPageRoute.fromGoRouterState(state);
+    return CarPageRoute.fromGoRouterState(state, context);
   }
 
   throw Exception("Route retrieval failure");
@@ -259,13 +264,13 @@ final routerData = base.FileRouterData(
         base.GoRoute(
           path: '/',
           builder: (BuildContext context, base.GoRouterState state) {
-            return HomePage(HomePageRoute.fromGoRouterState(state));
+            return HomePage(HomePageRoute.fromGoRouterState(state, context));
           },
           routes: [
             base.GoRoute(
               path: 'about',
               builder: (BuildContext context, base.GoRouterState state) {
-                return AboutPage(AboutPageRoute.fromGoRouterState(state));
+                return AboutPage(AboutPageRoute.fromGoRouterState(state, context));
               },
               redirect: base.getRedirect<AboutPageRoute>(
                   aboutPageRedirect.redirect, AboutPageRoute.fromGoRouterState),
@@ -273,13 +278,13 @@ final routerData = base.FileRouterData(
             base.GoRoute(
               path: 'cars',
               builder: (BuildContext context, base.GoRouterState state) {
-                return CarsPage(CarsPageRoute.fromGoRouterState(state));
+                return CarsPage(CarsPageRoute.fromGoRouterState(state, context));
               },
               routes: [
                 base.GoRoute(
                   path: ':carId',
                   builder: (BuildContext context, base.GoRouterState state) {
-                    return CarPage(CarPageRoute.fromGoRouterState(state));
+                    return CarPage(CarPageRoute.fromGoRouterState(state, context));
                   },
                 ),
               ],

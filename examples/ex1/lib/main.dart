@@ -10,18 +10,20 @@ class MyApp extends StatelessWidget {
 
   final fileRouter = FileRouter(
     routerData,
-    initialRoute: const HomePageRoute(age: 4),
+    initialRoute: const HomePageRoute(age: 104),
   );
 
   @override
   Widget build(BuildContext context) {
-    print(routerData.errorBuilder);
-    return MaterialApp.router(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+    return FileRouterProvider(
+      fileRouter.initialRoute,
+      child: MaterialApp.router(
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+        routerConfig: fileRouter,
       ),
-      routerConfig: fileRouter,
     );
   }
 }

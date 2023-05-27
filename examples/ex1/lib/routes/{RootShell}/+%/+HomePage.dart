@@ -34,6 +34,7 @@ class HomePage extends StatelessPage<HomePageRoute> {
               },
             ),
             Text(route.numbers.toString()),
+            Text("age: ${route.age}"),
           ],
         ),
       ),
