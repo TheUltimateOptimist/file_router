@@ -8,12 +8,70 @@ abstract class Route {
   Route? get previous;
 }
 
+class InheritedRoute extends InheritedWidget {
+  InheritedRoute(this.route, this.setRoute, {required super.child});
+
+  final Route? route;
+  final void Function<R extends Route>(R) setRoute;
+
+  @override
+  bool updateShouldNotify(covariant InheritedWidget oldWidget) {
+    return false;
+  }
+
+  static InheritedRoute of(BuildContext context) {
+    final inheritedRoute = context.getInheritedWidgetOfExactType<InheritedRoute>();
+    if (inheritedRoute == null) {
+      throw Exception("InheritedRoute could not be find in the current context");
+    }
+    return inheritedRoute;
+  }
+}
+
+class FileRouterProvider extends StatefulWidget {
+  const FileRouterProvider(this.initialRoute, {required this.child, super.key});
+
+  final Widget child;
+  final Route initialRoute;
+
+  @override
+  State<FileRouterProvider> createState() => _FileRouterProviderState();
+}
+
+class _FileRouterProviderState extends State<FileRouterProvider> {
+  Route? _route;
+
+  @override
+  void initState() {
+    _route = widget.initialRoute;
+    super.initState();
+  }
+
+  void setRoute<R extends Route>(R newRoute) {
+    setState(() {
+      _route = newRoute;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InheritedRoute(
+      _route,
+      setRoute,
+      child: widget.child,
+    );
+  }
+}
+
 typedef FileRouterRedirect<T extends Route> = FutureOr<Route?> Function(BuildContext, T);
-typedef FromGoRouterState<T extends Route> = T Function(GoRouterState);
+typedef FromGoRouterState<T extends Route> = T Function(GoRouterState, BuildContext);
 GoRouterRedirect getRedirect<T extends Route>(
     FileRouterRedirect<T> fileRouterRedirect, FromGoRouterState<T> fromGoRouterState) {
   return (BuildContext context, GoRouterState state) async {
-    final route = await fileRouterRedirect(context, fromGoRouterState(state));
+    final route = await fileRouterRedirect(context, fromGoRouterState(state, context));
+    if (route != null) {
+      InheritedRoute.of(context).setRoute<Route>(route);
+    }
     return route?.location;
   };
 }
@@ -79,7 +137,6 @@ class FileRouter extends GoRouter {
           initialLocation: initialRoute.location,
           initialExtra: initialRoute,
         );
-
   final FileRouterData data;
   final Route initialRoute;
 
@@ -87,24 +144,28 @@ class FileRouter extends GoRouter {
     return data.currentRouteIs<T>(location);
   }
 
-  Route currentRoute(GoRouterState state) {
-    return data.currentRoute(state);
+  Route currentRoute(GoRouterState state, BuildContext context) {
+    return data.currentRoute(state, context);
   }
 
-  void goRoute<R extends Route>(R route) {
-    go(route.location, extra: route);
+  void goRoute<R extends Route>(R route, BuildContext context) {
+    InheritedRoute.of(context).setRoute(route);
+    return go(route.location);
   }
 
-  Future<T?> pushRoute<T extends Object?, R extends Route>(R route) {
-    return push(route.location, extra: route);
+  Future<T?> pushRoute<T extends Object?, R extends Route>(R route, BuildContext context) {
+    InheritedRoute.of(context).setRoute(route);
+    return push(route.location);
   }
 
-  void pushReplacementRoute<R extends Route>(R route) {
-    return pushReplacement(route.location, extra: route);
+  void pushReplacementRoute<R extends Route>(R route, BuildContext context) {
+    InheritedRoute.of(context).setRoute(route);
+    return pushReplacement(route.location);
   }
 
-  void replaceRoute<R extends Route>(R route) {
-    return replace(route.location, extra: route);
+  void replaceRoute<R extends Route>(R route, BuildContext context) {
+    InheritedRoute.of(context).setRoute(route);
+    return replace(route.location);
   }
 
   static FileRouter of(BuildContext context) {
@@ -114,24 +175,24 @@ class FileRouter extends GoRouter {
 
 extension FileRouterExtension on BuildContext {
   void goRoute<R extends Route>(R route) {
-    FileRouter.of(this).goRoute(route);
+    FileRouter.of(this).goRoute(route, this);
   }
 
   Future<T?> pushRoute<T extends Object?, R extends Route>(R route) {
-    return FileRouter.of(this).pushRoute(route);
+    return FileRouter.of(this).pushRoute(route, this);
   }
 
   void pushReplacementRoute<R extends Route>(R route) {
-    FileRouter.of(this).pushReplacementRoute(route);
+    FileRouter.of(this).pushReplacementRoute(route, this);
   }
 
   void replaceRoute<R extends Route>(R route) {
-    FileRouter.of(this).replaceRoute(route);
+    FileRouter.of(this).replaceRoute(route, this);
   }
 
   bool currentRouteIs<T extends Route>() => FileRouter.of(this).currentRouteIs<T>();
 
-  Route currentRoute(GoRouterState state) => FileRouter.of(this).currentRoute(state);
+  Route currentRoute(GoRouterState state) => FileRouter.of(this).currentRoute(state, this);
 }
 
 class FileRouterData {
@@ -148,7 +209,7 @@ class FileRouterData {
   final Page<dynamic> Function(BuildContext, GoRouterState)? errorPageBuilder;
   final FutureOr<String?> Function(BuildContext, GoRouterState)? redirect;
   final bool Function<T extends Route>(String) currentRouteIs;
-  final Route Function(GoRouterState) currentRoute;
+  final Route Function(GoRouterState, BuildContext) currentRoute;
 }
 
 abstract class StatelessPage<T extends Route> extends StatelessWidget {

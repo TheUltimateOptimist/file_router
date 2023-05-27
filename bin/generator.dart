@@ -212,15 +212,16 @@ base.ShellRoute(
 class $routeName implements base.Route {
   const $routeName(${previousRouteName != null ? 'this.previous, ' : ''}${routeBuilder.constructor})$settingPrevious;
 
-  static $routeName fromGoRouterState(base.GoRouterState state) {
-    if (state.extra != null) {
-      final route = base.getRoute<$routeName>(state.extra as base.Route);
+  static $routeName fromGoRouterState(base.GoRouterState state, BuildContext context) {
+    final storedRoute = base.InheritedRoute.of(context).route;
+    if (storedRoute != null) {
+      final route = base.getRoute<$routeName>(storedRoute);
       if (route != null) {
         return route;
       }
     }
     ${routeBuilder.fromUrlEncoding}
-    return $constString$routeName(${previousRouteName != null ? '$previousRouteName.fromGoRouterState(state), ' : ''}${routeBuilder.instantiation});
+    return $constString$routeName(${previousRouteName != null ? '$previousRouteName.fromGoRouterState(state, context), ' : ''}${routeBuilder.instantiation});
   }
 
   @override
@@ -246,7 +247,7 @@ if (T == $routeName) {
 
     context.currentRoute += """
 if (currentRouteIs<$routeName>(state.location)) {
-  return $routeName.fromGoRouterState(state);
+  return $routeName.fromGoRouterState(state, context);
 }
 """;
     context.routeTree += """
@@ -254,7 +255,7 @@ base.GoRoute(
   path: '${route.relativeUrl}',
   builder: (BuildContext context, base.GoRouterState state) {
 
-    return ${route.name}($routeName.fromGoRouterState(state));
+    return ${route.name}($routeName.fromGoRouterState(state, context));
   },
 """;
     addRedirect(context, route);
@@ -412,7 +413,7 @@ bool currentRouteIs<T extends base.Route>(String location) {
   throw Exception("Route detection failure");
 }  
 
-base.Route currentRoute(base.GoRouterState state) {
+base.Route currentRoute(base.GoRouterState state, BuildContext context) {
   $currentRoute
   throw Exception("Route retrieval failure");
 }
