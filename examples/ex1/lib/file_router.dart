@@ -10,7 +10,7 @@ import 'package:ex1/routes/+error.dart';
 import 'package:ex1/types.dart';
 import 'package:ex1/routes/{RootShell}/{RootShell}.dart';
 import 'package:ex1/routes/{RootShell}/+%/+HomePage.dart';
-import 'package:ex1/routes/{RootShell}/+%/1-IntList;numbers%%.dart' as HomePageRoute_numbers;
+import 'package:ex1/routes/{RootShell}/+%/1-List{int};numbers%%.dart' as HomePageRoute_numbers;
 import 'package:ex1/routes/{RootShell}/+%/+about/+AboutPage.dart';
 import 'package:ex1/routes/{RootShell}/+%/+about/+redirect.dart' as aboutPageRedirect;
 import 'package:ex1/routes/{RootShell}/+%/+cars/+CarsPage.dart';
@@ -21,8 +21,9 @@ export 'package:flutter/material.dart' show BuildContext, Widget, Placeholder, S
 
 class HomePageRoute implements base.Route {
   const HomePageRoute({
-    this.numbers = HomePageRoute_numbers.defaultValue,
     this.age = 3,
+    this.numbers = HomePageRoute_numbers.defaultValue,
+    required this.myName,
   }) : previous = null;
 
   static HomePageRoute fromGoRouterState(base.GoRouterState state, BuildContext context) {
@@ -33,29 +34,21 @@ class HomePageRoute implements base.Route {
         return route;
       }
     }
-    print("is examining");
-    final IntList numbers;
-    if (state.queryParams['numbers'] != null) {
-      numbers = base.fromUrlEncoding<IntList>(converters, state.queryParams['numbers']!);
-    } else {
-      numbers = HomePageRoute_numbers.defaultValue;
-    }
-
-    return HomePageRoute(
-      numbers: numbers,
-    );
+    throw Exception(
+        'The HomePageRoute has required extra parameters. Therefore it can not be instantiated from the location alone.');
   }
 
   @override
   final base.Route? previous;
 
-  final IntList numbers;
   final int age;
+  final List<int> numbers;
+  final String myName;
 
   @override
   String get location {
     final List<({String name, String value})> queryParams = List.empty(growable: true);
-    queryParams.add((name: 'numbers', value: base.toUrlEncoding<IntList>(converters, numbers)));
+    queryParams.add((name: 'numbers', value: base.toUrlEncoding<List<int>>(converters, numbers)));
 
     return base.createLocation('/', queryParams, previous);
   }
@@ -64,9 +57,9 @@ class HomePageRoute implements base.Route {
 class AboutPageRoute implements base.Route {
   const AboutPageRoute(
     this.previous, {
+    this.parentAge,
     required this.id,
     required this.isAdmin,
-    this.parentAge,
     required this.percentage,
     required this.name,
   });
@@ -79,23 +72,22 @@ class AboutPageRoute implements base.Route {
         return route;
       }
     }
-
-    final id = base.fromUrlEncoding<int>(builtInConverters, state.queryParams['id']!);
-    final isAdmin = base.fromUrlEncoding<bool>(builtInConverters, state.queryParams['isAdmin']!);
     final int? parentAge;
     if (state.queryParams['parentAge'] != null) {
       parentAge = base.fromUrlEncoding<int?>(builtInConverters, state.queryParams['parentAge']!);
     } else {
       parentAge = null;
     }
+    final id = base.fromUrlEncoding<int>(builtInConverters, state.queryParams['id']!);
+    final isAdmin = base.fromUrlEncoding<bool>(builtInConverters, state.queryParams['isAdmin']!);
     final percentage =
         base.fromUrlEncoding<double>(builtInConverters, state.queryParams['percentage']!);
     final name = base.fromUrlEncoding<String>(builtInConverters, state.queryParams['name']!);
     return AboutPageRoute(
       HomePageRoute.fromGoRouterState(state, context),
+      parentAge: parentAge,
       id: id,
       isAdmin: isAdmin,
-      parentAge: parentAge,
       percentage: percentage,
       name: name,
     );
@@ -104,21 +96,21 @@ class AboutPageRoute implements base.Route {
   @override
   final HomePageRoute previous;
 
+  final int? parentAge;
   final int id;
   final bool isAdmin;
-  final int? parentAge;
   final double percentage;
   final String name;
 
   @override
   String get location {
     final List<({String name, String value})> queryParams = List.empty(growable: true);
-    queryParams.add((name: 'id', value: base.toUrlEncoding<int>(builtInConverters, id)));
-    queryParams.add((name: 'isAdmin', value: base.toUrlEncoding<bool>(builtInConverters, isAdmin)));
     if (parentAge != null) {
       queryParams
           .add((name: 'parentAge', value: base.toUrlEncoding<int?>(builtInConverters, parentAge!)));
     }
+    queryParams.add((name: 'id', value: base.toUrlEncoding<int>(builtInConverters, id)));
+    queryParams.add((name: 'isAdmin', value: base.toUrlEncoding<bool>(builtInConverters, isAdmin)));
     queryParams.add(
         (name: 'percentage', value: base.toUrlEncoding<double>(builtInConverters, percentage)));
     queryParams.add((name: 'name', value: base.toUrlEncoding<String>(builtInConverters, name)));
@@ -128,8 +120,9 @@ class AboutPageRoute implements base.Route {
 
   HomePageRoute get homePageRoute => previous;
 
-  IntList get numbers => previous.numbers;
   int get age => previous.age;
+  List<int> get numbers => previous.numbers;
+  String get myName => previous.myName;
 }
 
 class CarsPageRoute implements base.Route {
@@ -163,8 +156,9 @@ class CarsPageRoute implements base.Route {
 
   HomePageRoute get homePageRoute => previous;
 
-  IntList get numbers => previous.numbers;
   int get age => previous.age;
+  List<int> get numbers => previous.numbers;
+  String get myName => previous.myName;
 }
 
 class CarPageRoute implements base.Route {
@@ -205,8 +199,9 @@ class CarPageRoute implements base.Route {
   CarsPageRoute get carsPageRoute => previous;
   HomePageRoute get homePageRoute => previous.previous;
 
-  IntList get numbers => previous.previous.numbers;
   int get age => previous.previous.age;
+  List<int> get numbers => previous.previous.numbers;
+  String get myName => previous.previous.myName;
 }
 
 const builtInConverters = <base.Converter>[
