@@ -126,6 +126,8 @@ List<Param> extractUrlParams(String folderName) {
   if (type.endsWith("N")) {
     type = "${type.substring(0, type.length - 1)}?";
   }
+  //neccessary because windows does not allow "<", ">" as part of filenames
+  type = type.replaceAll("{", "<").replaceAll("}", ">");
   return (
     name: parts.length > 1 ? parts[1] : parts[0].uncapitalize(),
     type: type,

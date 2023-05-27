@@ -15,5 +15,3 @@ class IntListConverter implements Converter<List<int>> {
 }
 
 const converters = [IntListConverter()];
-
-typedef IntList = List<int>;
