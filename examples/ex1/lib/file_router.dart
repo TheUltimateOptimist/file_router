@@ -253,7 +253,12 @@ final routerData = base.FileRouterData(
   routes: [
     base.ShellRoute(
       builder: (BuildContext context, base.GoRouterState state, Widget child) {
-        return RootShell(child);
+        final storedRoute = base.InheritedRoute.of(context).route;
+        if (storedRoute != null) {
+          return RootShell(route: storedRoute, child: child);
+        }
+        final route = currentRoute(state, context);
+        return RootShell(route: route, child: child);
       },
       routes: [
         base.GoRoute(

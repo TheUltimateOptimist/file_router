@@ -3,7 +3,11 @@ import 'package:ex1/file_router.dart';
 import 'package:flutter/material.dart';
 
 class RootShell extends StatelessShell {
-  const RootShell(super.child, {super.key});
+  const RootShell({
+    super.key,
+    required super.route,
+    required super.child,
+  });
 
   @override
   Widget build(BuildContext context) {
