@@ -26,7 +26,7 @@ class CarsPage extends StatelessPage<CarsPageRoute> {
             ElevatedButton(
               child: const Text("HOmepage"),
               onPressed: () {
-                context.pop();
+                context.popRoute();
               },
             ),
             Text(route.age.toString()),

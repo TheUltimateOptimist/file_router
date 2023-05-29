@@ -13,7 +13,7 @@ abstract class RouteMarker {}
 class InheritedRoute extends InheritedWidget {
   InheritedRoute(this.route, this.setRoute, {required super.child});
 
-  final Route? route;
+  final Route route;
   final void Function<R extends Route>(R) setRoute;
 
   @override
@@ -41,7 +41,7 @@ class FileRouterProvider extends StatefulWidget {
 }
 
 class _FileRouterProviderState extends State<FileRouterProvider> {
-  Route? _route;
+  late Route _route;
 
   @override
   void initState() {
@@ -170,6 +170,12 @@ class FileRouter extends GoRouter {
     return replace(route.location);
   }
 
+  void popRoute<T extends Object?>(BuildContext context, [T? result]) {
+    final inheritedRoute = InheritedRoute.of(context);
+    inheritedRoute.setRoute(inheritedRoute.route.previous!);
+    return super.pop<T>(result);
+  }
+
   static FileRouter of(BuildContext context) {
     return GoRouter.of(context) as FileRouter;
   }
@@ -190,6 +196,10 @@ extension FileRouterExtension on BuildContext {
 
   void replaceRoute<R extends Route>(R route) {
     FileRouter.of(this).replaceRoute(route, this);
+  }
+
+  void popRoute<T extends Object?>([T? result]) {
+    FileRouter.of(this).popRoute<T>(this, result);
   }
 
   bool currentRouteIs<T extends Route>() => FileRouter.of(this).currentRouteIs<T>();
