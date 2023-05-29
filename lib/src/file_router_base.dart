@@ -225,14 +225,24 @@ abstract class StatefulPage<T extends Route> extends StatefulWidget {
 }
 
 abstract class StatelessShell extends StatelessWidget {
-  const StatelessShell(this.child, {super.key});
+  const StatelessShell({
+    super.key,
+    required this.route,
+    required this.child,
+  });
 
+  final Route route;
   final Widget child;
 }
 
 abstract class StatefulShell extends StatefulWidget {
-  const StatefulShell(this.child, {super.key});
+  const StatefulShell({
+    super.key,
+    required this.route,
+    required this.child,
+  });
 
+  final Route route;
   final Widget child;
 }
 

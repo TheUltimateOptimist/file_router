@@ -113,7 +113,7 @@ class ${route.name} extends StatelessPage<${route.name}Route> {
     case ShellRoute:
       file.insertAfterImports("""
 class ${route.name} extends StatelessShell {
-  const ${route.name}(super.child, {super.key});
+  const ${route.name}({super.key, required super.route, required super.child,});
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +122,7 @@ class ${route.name} extends StatelessShell {
 }
 
 // class ${route.name} extends StatefulShell {
-//   const ${route.name}(super.child, {super.key});
+//   const ${route.name}({super.key, required super.route, required super.child,});
 
 //   @override
 //   State<${route.name}> createState() => _${route.name}State(); 
@@ -145,7 +145,12 @@ void generateRouteSource(BuildContext context, Route route) {
     context.routeTree += """
 base.ShellRoute(
   builder: (BuildContext context, base.GoRouterState state, Widget child){
-    return ${route.name}(child);
+    final storedRoute = base.InheritedRoute.of(context).route;
+    if (storedRoute != null) {
+      return ${route.name}(route: storedRoute, child: child);
+    }
+    final route = currentRoute(state, context);
+    return ${route.name}(route: route, child: child);
   },
   ${route.children.isEmpty ? '' : 'routes: ['}
 """;
