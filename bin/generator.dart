@@ -51,7 +51,7 @@ void generateSource(List<Route> routes) {
   addErrorBuilder(context);
   addCustomTypes(context);
   for (final route in routes) {
-    generateRouteSource(context, route, null);
+    generateRouteSource(context, route);
   }
   final file = File(join("lib", "file_router.dart"));
   file.createSync();
@@ -112,7 +112,7 @@ class ${route.name} extends StatelessPage<${route.name}Route> {
 """, topLineSpacing: 1);
     case ShellRoute:
       file.insertAfterImports("""
-class ${route.name} extends StatelessShell<${route.name}Marker> {
+class ${route.name} extends StatelessShell {
   const ${route.name}({super.key, required super.route, required super.child,});
 
   @override
@@ -121,7 +121,7 @@ class ${route.name} extends StatelessShell<${route.name}Marker> {
   }
 }
 
-// class ${route.name} extends StatefulShell<${route.name}Marker> {
+// class ${route.name} extends StatefulShell {
 //   const ${route.name}({super.key, required super.route, required super.child,});
 
 //   @override
@@ -138,31 +138,18 @@ class ${route.name} extends StatelessShell<${route.name}Marker> {
   }
 }
 
-String getMarkerName(Route route) {
-  if (route is ShellRoute) {
-    return "${route.name}Marker";
-  }
-  return "${route.name}RouteMarker";
-}
-
-void generateRouteSource(BuildContext context, Route route, Route? previous) {
+void generateRouteSource(BuildContext context, Route route) {
   context.addFileImport(route.filePath);
-  String implementsClause = " implements base.RouteMarker ";
-  if (previous != null) {
-    implementsClause = " implements ${getMarkerName(previous)} ";
-  }
-  context.markers += "\nabstract class ${getMarkerName(route)}$implementsClause{}";
   generatePage(route, context);
   if (route is ShellRoute) {
-    final markerName = getMarkerName(route);
     context.routeTree += """
 base.ShellRoute(
   builder: (BuildContext context, base.GoRouterState state, Widget child){
     final storedRoute = base.InheritedRoute.of(context).route;
     if (storedRoute != null) {
-      return ${route.name}(route: storedRoute as $markerName, child: child);
+      return ${route.name}(route: storedRoute, child: child);
     }
-    final route = currentRoute(state, context) as $markerName;
+    final route = currentRoute(state, context);
     return ${route.name}(route: route, child: child);
   },
   ${route.children.isEmpty ? '' : 'routes: ['}
@@ -235,7 +222,7 @@ return $constString$routeName(${previousRouteName != null ? '$previousRouteName.
 """;
     }
     context.routes += """
-class $routeName implements base.Route, ${routeName}Marker {
+class $routeName implements base.Route {
   const $routeName(${previousRouteName != null ? 'this.previous, ' : ''}${routeBuilder.constructor})$settingPrevious;
 
   static $routeName fromGoRouterState(base.GoRouterState state, BuildContext context) {
@@ -289,7 +276,7 @@ base.GoRoute(
     }
   }
   for (final child in route.children) {
-    generateRouteSource(context, child, route);
+    generateRouteSource(context, child);
   }
   if (route.children.isNotEmpty) {
     context.routeTree += "],";
@@ -401,7 +388,6 @@ class BuildContext {
 
   String routeTree = "";
   String routes = "";
-  String markers = "";
   String imports = "";
   String currentRouteIs = "";
   String currentRoute = "";
@@ -428,8 +414,6 @@ $imports
 
 export 'package:file_router/file_router.dart';
 export 'package:flutter/material.dart' show BuildContext, Widget, Placeholder, State;
-
-$markers
 
 $routes
 

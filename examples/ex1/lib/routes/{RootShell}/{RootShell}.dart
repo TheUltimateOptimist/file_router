@@ -2,7 +2,7 @@ import 'package:ex1/file_router.dart';
 
 import 'package:flutter/material.dart';
 
-class RootShell extends StatelessShell<RootShellMarker> {
+class RootShell extends StatelessShell {
   const RootShell({
     super.key,
     required super.route,
@@ -11,11 +11,10 @@ class RootShell extends StatelessShell<RootShellMarker> {
 
   @override
   Widget build(BuildContext context) {
-    print(route);
     int currentIndex = 0;
-    if (route is AboutPageRoute) {
+    if (context.currentRouteIs<AboutPageRoute>()) {
       currentIndex = 1;
-    } else if (route is CarsPageRouteMarker) {
+    } else if (context.currentRouteIs<CarsPageRoute>() || context.currentRouteIs<CarPageRoute>()) {
       currentIndex = 2;
     }
     return Scaffold(

@@ -8,8 +8,6 @@ abstract class Route {
   Route? get previous;
 }
 
-abstract class RouteMarker {}
-
 class InheritedRoute extends InheritedWidget {
   InheritedRoute(this.route, this.setRoute, {required super.child});
 
@@ -233,25 +231,25 @@ abstract class StatefulPage<T extends Route> extends StatefulWidget {
   final T route;
 }
 
-abstract class StatelessShell<T extends RouteMarker> extends StatelessWidget {
+abstract class StatelessShell extends StatelessWidget {
   const StatelessShell({
     super.key,
     required this.route,
     required this.child,
   });
 
-  final T route;
+  final Route route;
   final Widget child;
 }
 
-abstract class StatefulShell<T extends RouteMarker> extends StatefulWidget {
+abstract class StatefulShell extends StatefulWidget {
   const StatefulShell({
     super.key,
     required this.route,
     required this.child,
   });
 
-  final T route;
+  final Route route;
   final Widget child;
 }
 
