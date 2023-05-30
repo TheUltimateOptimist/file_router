@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FileRouterProvider(
-      fileRouter.initialRoute,
+      fileRouter,
       child: MaterialApp.router(
         title: 'Flutter Demo',
         theme: ThemeData(

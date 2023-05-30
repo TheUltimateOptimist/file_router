@@ -31,10 +31,10 @@ class InheritedRoute extends InheritedWidget {
 }
 
 class FileRouterProvider extends StatefulWidget {
-  const FileRouterProvider(this.initialRoute, {required this.child, super.key});
+  const FileRouterProvider(this.router, {required this.child, super.key});
 
   final Widget child;
-  final Route initialRoute;
+  final FileRouter router;
 
   @override
   State<FileRouterProvider> createState() => _FileRouterProviderState();
@@ -45,7 +45,14 @@ class _FileRouterProviderState extends State<FileRouterProvider> {
 
   @override
   void initState() {
-    _route = widget.initialRoute;
+    _route = widget.router.initialRoute;
+    widget.router.addListener(() {
+      if (!isAPair(_route.location, widget.router.location)) {
+        setState(() {
+          _route = _route.previous!;
+        });
+      }
+    });
     super.initState();
   }
 
@@ -170,12 +177,6 @@ class FileRouter extends GoRouter {
     return replace(route.location);
   }
 
-  void popRoute<T extends Object?>(BuildContext context, [T? result]) {
-    final inheritedRoute = InheritedRoute.of(context);
-    inheritedRoute.setRoute(inheritedRoute.route.previous!);
-    return super.pop<T>(result);
-  }
-
   static FileRouter of(BuildContext context) {
     return GoRouter.of(context) as FileRouter;
   }
@@ -196,10 +197,6 @@ extension FileRouterExtension on BuildContext {
 
   void replaceRoute<R extends Route>(R route) {
     FileRouter.of(this).replaceRoute(route, this);
-  }
-
-  void popRoute<T extends Object?>([T? result]) {
-    FileRouter.of(this).popRoute<T>(this, result);
   }
 
   bool currentRouteIs<T extends Route>() => FileRouter.of(this).currentRouteIs<T>();
