@@ -15,4 +15,12 @@ extension StringExtensions on String {
   String snakeToCamelCase() => snakeToPascalCase().uncapitalize();
 
   String withoutSurroundingChars() => substring(1, length - 1);
+
+  String surroundWith(String left, {String? right, bool ifEmpty = true}) {
+    right ??= left;
+    if (isEmpty && !ifEmpty) {
+      return "";
+    }
+    return "$left$this$right";
+  }
 }

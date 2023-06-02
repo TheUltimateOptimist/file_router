@@ -6,18 +6,6 @@ import 'routes.dart';
 import 'extensions/io.dart';
 import "package:pubspec_parse/pubspec_parse.dart";
 
-List<Param> getAncestorParams(RegularRoute topRoute) {
-  List<Param> params = List.empty(growable: true);
-  Route? route = topRoute.previous;
-  while (route != null) {
-    if (route is RegularRoute) {
-      params.addAll(route.params);
-    }
-    route = route.previous;
-  }
-  return params;
-}
-
 String getAbsoluteUrl(RegularRoute topRoute) {
   String url = "";
   Route? route = topRoute;
@@ -32,18 +20,6 @@ String getAbsoluteUrl(RegularRoute topRoute) {
     url = url.substring(1);
   }
   return url;
-}
-
-String? getPreviousRouteName(RegularRoute topRoute) {
-  Route? route = topRoute.previous;
-  while (route != null) {
-    if (route is RegularRoute) {
-      return "${route.name}Route";
-    } else {
-      route = route.previous;
-    }
-  }
-  return null;
 }
 
 void generateSource(List<Route> routes) {
@@ -77,18 +53,18 @@ Widget error(BuildContext context, Route route) {
   }
 }
 
-void generatePage(Route route, BuildContext context) {
+void generatePage(BuildContext context, Route route) {
   final relativePath = joinAll(route.filePath.split("/"));
   final file = File(join(Directory.current.path, "lib", relativePath));
-  if (file.containsClass(route.name)) {
+  if (file.containsClass(route.pageName)) {
     return;
   }
   file.addImport("package:${context.projectName}/file_router.dart");
   switch (route.runtimeType) {
     case RegularRoute:
       file.insertAfterImports("""
-class ${route.name} extends StatelessPage<${route.name}Route> {
-  const ${route.name}(super.route, {super.key});
+class ${route.pageName} extends StatelessPage<${route.routeName}> {
+  const ${route.pageName}(super.route, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -96,14 +72,14 @@ class ${route.name} extends StatelessPage<${route.name}Route> {
   }
 }
 
-// class ${route.name} extends StatefulPage<${route.name}Route> {
-//   const ${route.name}(super.route, {super.key});
+// class ${route.pageName} extends StatefulPage<${route.routeName}> {
+//   const ${route.pageName}(super.route, {super.key});
 
 //   @override
-//   State<${route.name}> createState() => _${route.name}State(); 
+//   State<${route.pageName}> createState() => _${route.pageName}State(); 
 // }
 
-// class _${route.name}State extends State<${route.name}> {
+// class _${route.pageName}State extends State<${route.pageName}> {
 //   @override
 //   Widget build(BuildContext context) {
 //     return const Placeholder(); 
@@ -112,8 +88,8 @@ class ${route.name} extends StatelessPage<${route.name}Route> {
 """, topLineSpacing: 1);
     case ShellRoute:
       file.insertAfterImports("""
-class ${route.name} extends StatelessShell {
-  const ${route.name}({super.key, required super.route, required super.child,});
+class ${route.pageName} extends StatelessShell<${getShellRouteType(route as ShellRoute)}> {
+  const ${route.pageName}({super.key, required super.route, required super.child,});
 
   @override
   Widget build(BuildContext context) {
@@ -121,14 +97,14 @@ class ${route.name} extends StatelessShell {
   }
 }
 
-// class ${route.name} extends StatefulShell {
-//   const ${route.name}({super.key, required super.route, required super.child,});
+// class ${route.pageName} extends StatefulShell<${getShellRouteType(route)}> {
+//   const ${route.pageName}({super.key, required super.route, required super.child,});
 
 //   @override
-//   State<${route.name}> createState() => _${route.name}State(); 
+//   State<${route.pageName}> createState() => _${route.pageName}State(); 
 // }
 
-// class _${route.name}State extends State<${route.name}> {
+// class _${route.pageName}State extends State<${route.pageName}> {
 //   @override
 //   Widget build(BuildContext context) {
 //     return const Placeholder(); 
@@ -140,143 +116,18 @@ class ${route.name} extends StatelessShell {
 
 void generateRouteSource(BuildContext context, Route route) {
   context.addFileImport(route.filePath);
-  generatePage(route, context);
-  if (route is ShellRoute) {
-    context.routeTree += """
-base.ShellRoute(
-  builder: (BuildContext context, base.GoRouterState state, Widget child){
-    final storedRoute = base.InheritedRoute.of(context).route;
-    if (storedRoute != null) {
-      return ${route.name}(route: storedRoute, child: child);
-    }
-    final route = currentRoute(state, context);
-    return ${route.name}(route: route, child: child);
-  },
-  ${route.children.isEmpty ? '' : 'routes: ['}
-""";
-  } else if (route is RegularRoute) {
-    final routeName = "${route.name}Route";
-    final previousRouteName = getPreviousRouteName(route);
-    final routeBuilder = RouteBuilder();
-    addGetters(routeBuilder, route);
-    for (final param in route.params) {
-      routeBuilder.declarations += "\nfinal ${param.type} ${param.name};";
-    }
-    final positionalParams = route.params.whereType<UrlParam>();
-    final namedParams = route.params.whereType<Optional>();
-    final queryParams = route.params.whereType<QueryParam>();
-    for (final param in positionalParams) {
-      final converters = param.typeBuiltIn ? "builtInConverters" : "converters";
-      routeBuilder.constructor += "this.${param.name},";
-      routeBuilder.fromUrlEncoding +=
-          "\nfinal ${param.name} = base.fromUrlEncoding<${param.type}>($converters, state.params['${param.name}']!);";
-      routeBuilder.toUrlEncoding +=
-          "\nfinal ${param.name} = base.toUrlEncoding<${param.type}>($converters, this.${param.name});";
-      routeBuilder.instantiation += "${param.name}, ";
-    }
-    if (namedParams.isNotEmpty) {
-      routeBuilder.constructor += "{";
-    }
-    for (final param in namedParams) {
-      String defaultAssignment = "";
-      if (param.defaultValue != null) {
-        String defaultValue = param.defaultValue!;
-        if (param.type.startsWith("String")) {
-          defaultValue = "'$defaultValue'";
-        }
-        defaultAssignment = " = $defaultValue";
-      } else if (param.importDefault) {
-        final importName = "${routeName}_${param.name}";
-        context.addFileImport("${route.folderPath}/${param.fullName}",
-            additional: " as $importName");
-        defaultAssignment = " = $importName.defaultValue";
-      } else if (param.isRequired) {
-        routeBuilder.constructor += "required ";
-      }
-      routeBuilder.constructor += "this.${param.name}$defaultAssignment,";
-    }
-    if (namedParams.isNotEmpty) {
-      routeBuilder.constructor += "}";
-    }
-    for (final queryParam in queryParams) {
-      routeBuilder.instantiation += "${queryParam.name}: ${queryParam.name}, ";
-      addQueryParamConversions(routeBuilder, queryParam, "${route.name}Route");
-    }
-    routeBuilder.declarations.trim();
-    routeBuilder.fromUrlEncoding.trim();
-    final absoluteUrl = getAbsoluteUrl(route);
-    String settingPrevious = "";
-    if (previousRouteName == null) {
-      settingPrevious = " : previous = null";
-    }
-    String constString = "";
-    if (route.previous == null && route.params.isEmpty) {
-      constString = "const ";
-    }
-    String fromGoRouterState =
-        "throw Exception('The $routeName has required extra parameters. Therefore it can not be instantiated from the location alone.');";
-    if (route.params.whereType<ExtraParam>().every((param) => !param.isRequired)) {
-      fromGoRouterState = """
-${routeBuilder.fromUrlEncoding}
-return $constString$routeName(${previousRouteName != null ? '$previousRouteName.fromGoRouterState(state, context), ' : ''}${routeBuilder.instantiation});
-""";
-    }
-    context.routes += """
-class $routeName implements base.Route {
-  const $routeName(${previousRouteName != null ? 'this.previous, ' : ''}${routeBuilder.constructor})$settingPrevious;
-
-  static $routeName fromGoRouterState(base.GoRouterState state, BuildContext context) {
-    final storedRoute = base.InheritedRoute.of(context).route;
-    if (storedRoute != null) {
-      final route = base.getRoute<$routeName>(storedRoute);
-      if (route != null) {
-        return route;
-      }
-    }
-    $fromGoRouterState    
+  generatePage(context, route);
+  addParamDefaultValueImports(context, route);
+  switch (route) {
+    case RegularRoute():
+      addRegularRoute(context, route);
+      addRedirect(context, route);
+      addCurrentRouteIs(context, route);
+    case ShellRoute():
+      addShellRoute(context, route);
   }
-
-  @override
-  final ${previousRouteName ?? 'base.Route?'} previous;
-  ${routeBuilder.declarations}
-
-  @override
-  String get location {
-    final List<({String name, String value})> queryParams = List.empty(growable: true);
-    ${routeBuilder.toUrlEncoding}
-    return base.createLocation('${route.relativeUrl.replaceAll(":", "\$")}', queryParams, previous);
-  }
-
-  ${routeBuilder.routeGetters}
-  ${routeBuilder.fieldGetters}
-}
-""";
-    context.currentRouteIs += """
-if (T == $routeName) {
-  return base.isAPair('$absoluteUrl', location);
-}  
-""";
-
-    context.currentRoute += """
-if (currentRouteIs<$routeName>(state.location)) {
-  return $routeName.fromGoRouterState(state, context);
-}
-""";
-    context.routeTree += """
-base.GoRoute(
-  path: '${route.relativeUrl}',
-  builder: (BuildContext context, base.GoRouterState state) {
-
-    return ${route.name}($routeName.fromGoRouterState(state, context));
-  },
-""";
-    addRedirect(context, route);
-    if (route.children.isNotEmpty) {
-      context.routeTree += "routes: [";
-    }
-  }
-  for (final child in route.children) {
-    generateRouteSource(context, child);
+  for (final route in route.children) {
+    generateRouteSource(context, route);
   }
   if (route.children.isNotEmpty) {
     context.routeTree += "],";
@@ -284,25 +135,181 @@ base.GoRoute(
   context.routeTree += "),";
 }
 
+void addCurrentRouteIs(BuildContext context, RegularRoute route) {
+  context.currentRouteIs += """
+if (T == ${route.routeName}) {
+  return base.isAPair('${getAbsoluteUrl(route)}', location);
+}  
+""";
+}
+
 void addRedirect(BuildContext context, RegularRoute route) {
   final file = File(join("lib", joinAll(route.folderPath.split("/")), "+redirect.dart"));
   if (file.existsSync()) {
-    final routeName = "${route.name}Route";
     if (file.readAsStringSync().trim().isEmpty) {
       file.writeAsStringSync("""
 import 'dart:async';
 import 'package:${context.projectName}/file_router.dart';
 
-FutureOr<Route?> redirect(BuildContext context, $routeName route) {
+FutureOr<Route?> redirect(BuildContext context, ${route.routeName} route) {
   return null;
 }
 """);
     }
-    final importAs = "${route.name.uncapitalize()}Redirect";
+    final importAs = "${route.routeName.uncapitalize()}Redirect";
     context.addFileImport("${route.folderPath}/+redirect.dart", additional: " as $importAs");
-    context.routeTree +=
-        "redirect: base.getRedirect<$routeName>($importAs.redirect, $routeName.fromGoRouterState),";
+    context.routeTree += "redirect: base.getRedirect<${route.routeName}>($importAs.redirect),";
   }
+}
+
+String getParentType(Route route) {
+  if (route.previous case final previous?) {
+    return previous.routeName;
+  }
+  return "base.Route";
+}
+
+String getShellRouteType(ShellRoute route) {
+  if (route.children.length == 1 && route.children.first is RegularRoute) {
+    return route.children.first.routeName;
+  }
+  return route.routeName;
+}
+
+RegularRoute? getParentRegularRoute(Route route) {
+  Route? parentRoute = route.previous;
+  while (parentRoute != null) {
+    if (parentRoute is RegularRoute) {
+      return parentRoute;
+    }
+    parentRoute = parentRoute.previous;
+  }
+  return null;
+}
+
+String getAbstractGetters(List<Param> params) {
+  return params.map((param) => "${param.type} get ${param.name};").join("\n");
+}
+
+void addShellRoute(BuildContext context, ShellRoute route) {
+  context.routeTree += """
+base.ShellRoute(
+  builder: (BuildContext context, base.GoRouterState state, Widget child){
+    final storedRoute = base.InheritedRoute.of(context).route as ${getShellRouteType(route)};
+    return ${route.pageName}(route: storedRoute, child: child);
+  },
+  ${route.children.isEmpty ? '' : 'routes: ['}
+""";
+
+  context.routes += """
+sealed class ${route.routeName} implements ${getParentType(route)} {
+  ${getAbstractGetters(route.params)}
+}
+""";
+}
+
+void addRegularRoute(BuildContext context, RegularRoute route) {
+  final params = getRouteParams(route);
+  final relativeUrl = "'${route.relativeUrl}'";
+  final parentRegularRoute = getParentRegularRoute(route);
+  final ({String constructor, String definition}) previous;
+  if (parentRegularRoute == null) {
+    previous = (constructor: "", definition: "@override\nbase.Route? get previous => null;");
+  } else {
+    previous = (constructor: "this.previous, ", definition: "@override\nfinal ${parentRegularRoute.routeName} previous;");
+  }
+  context.routeTree += """
+base.GoRoute(
+  path: $relativeUrl,
+  builder: (BuildContext context, base.GoRouterState state) {
+    return ${route.pageName}(base.getRoute<${route.routeName}>(context));
+  },
+  ${route.children.isEmpty ? '' : 'routes: ['}
+""";
+  context.routes += """
+class ${route.routeName} implements ${getParentType(route)} {
+  const ${route.routeName}(${previous.constructor}${getParamDeclarations(params)});
+
+  ${previous.definition}
+  ${getParamDefinitions(params)}
+
+  ${getFromGoRouterState(route)}
+
+  @override
+  String get location {
+    final List<base.QueryParam> queryParams = List.empty(growable: true);
+    ${getToUrlEncoding(params)}
+    return base.createLocation(${relativeUrl.replaceAll(":", "\$")}, queryParams, previous);
+  }
+
+  ${getRouteAndFieldGetters(route)}
+}
+""";
+}
+
+List<Param> getRouteParams(RegularRoute route) {
+  final params = route.params;
+  var parentRoute = route.previous;
+  while (parentRoute != null && parentRoute is! RegularRoute) {
+    params.addAll(parentRoute.params);
+    parentRoute = parentRoute.previous;
+  }
+  return params;
+}
+
+String getParamDefinitions(List<Param> params) {
+  return params.map((param) {
+    return "final ${param.type} ${param.name};";
+  }).join("\n");
+}
+
+String getParamDeclarations(List<Param> params) {
+  final positionals = params.whereType<UrlParam>();
+  final optionals = params.whereType<Optional>();
+  final positionalString = positionals.map((param) => "this.${param.name},").join(" ");
+  final optionalString = optionals
+      .map((param) {
+        if (param.type.endsWith("?")) {
+          return "this.${param.name},";
+        }
+        if (param.isRequired) {
+          return "required this.${param.name},";
+        }
+        return "this.${param.name} = ${param.defaultValue!},";
+      })
+      .join(" ")
+      .surroundWith("{", right: "}", ifEmpty: false);
+  return "$positionalString$optionalString";
+}
+
+String getParamInstantiations(List<Param> params) {
+  final positionals = params.whereType<UrlParam>();
+  final optionals = params.whereType<Optional>();
+  final positionalString = positionals.map((param) => "${param.name},").join(" ");
+  final optionalString = optionals.map((param) => "${param.name}: ${param.name},").join(" ");
+  return "$positionalString$optionalString";
+}
+
+String getFromGoRouterState(RegularRoute route) {
+  if (route.params.any((param) => param is ExtraParam && param.isRequired)) {
+    return """
+static ${route.routeName} fromGoRouterState(base.GoRouterState state) {
+  throw Exception('The ${route.routeName} has required extra parameters. Therefore it can not be instantiated from the location alone.');
+}
+""";
+  }
+  final parentRoute = getParentRegularRoute(route);
+  final params = route.params.where((param) => !(param is ExtraParam && param.isRequired)).toList();
+  String parentInstantiation = "";
+  if (parentRoute != null) {
+    parentInstantiation = "${parentRoute.routeName}.fromGoRouterState(state), ";
+  }
+  return """
+static ${route.routeName} fromGoRouterState(base.GoRouterState state) {
+  ${getFromUrlEncoding(route.params)}
+  return ${route.routeName}($parentInstantiation${getParamInstantiations(params)});
+}
+""";
 }
 
 void addCustomTypes(BuildContext context) {
@@ -313,74 +320,58 @@ void addCustomTypes(BuildContext context) {
   context.addFileImport("types.dart");
 }
 
-void addGetters(RouteBuilder routeBuilder, RegularRoute route) {
+String getRouteAndFieldGetters(RegularRoute route) {
   Route? parentRoute = route.previous;
   String previous = "previous";
+  List<String> lines = List.empty(growable: true);
   while (parentRoute != null) {
     if (parentRoute is RegularRoute) {
+      lines.add("${parentRoute.routeName} get ${parentRoute.routeName.uncapitalize()} => $previous;");
       for (final param in parentRoute.params) {
-        routeBuilder.fieldGetters += """
-${param.type} get ${param.name} => $previous.${param.name}; 
-""";
+        lines.add("@override\n${param.type} get ${param.name} => $previous.${param.name};");
       }
-      routeBuilder.routeGetters += """
-${parentRoute.name}Route get ${parentRoute.name.uncapitalize()}Route => $previous;
-""";
     }
     parentRoute = parentRoute.previous;
     previous += ".previous";
   }
+  return lines.join("\n");
 }
 
-void addQueryParamConversions(RouteBuilder routeBuilder, QueryParam param, String routeName) {
-  final converters = param.typeBuiltIn ? "builtInConverters" : "converters";
-  if (param.defaultValue != null) {
-    routeBuilder.fromUrlEncoding +=
-        "\nfinal ${param.name} = base.fromUrlEncoding<${param.type}>($converters, state.queryParams['${param.name}'] ?? '${param.defaultValue}');";
-  } else if (param.importDefault) {
-    routeBuilder.fromUrlEncoding += """
-final ${param.type} ${param.name};
-if (state.queryParams['${param.name}'] != null) {
-  ${param.name} = base.fromUrlEncoding<${param.type}>($converters, state.queryParams['${param.name}']!);
+String getConvertersName(Param param) {
+  return param.typeBuiltIn ? "builtInConverters" : "converters";
 }
-else {
-  ${param.name} = ${routeName}_${param.name}.defaultValue;
-}
-""";
-  } else if (param.isRequired) {
-    routeBuilder.fromUrlEncoding +=
-        "\nfinal ${param.name} = base.fromUrlEncoding<${param.type}>($converters, state.queryParams['${param.name}']!);";
-  } else {
-    routeBuilder.fromUrlEncoding += """
-final ${param.type} ${param.name};
-if (state.queryParams['${param.name}'] != null) {
-  ${param.name} = base.fromUrlEncoding<${param.type}>($converters, state.queryParams['${param.name}']!);
-}
-else {
-  ${param.name} = null;
-}""";
+
+String getToUrlEncoding(List<Param> params) {
+  List<String> lines = List.empty(growable: true);
+  for (final param in params) {
+    if (param is UrlParam) {
+      lines.add("final ${param.name} = base.toUrlEncoding<${param.type}>(${getConvertersName(param)}, this.${param.name});");
+    } else if (param is QueryParam) {
+      lines.add("base.addQueryParam<${param.type}>(${getConvertersName(param)}, '${param.name}', ${param.name}, queryParams);");
+    }
   }
-  if (param.type.endsWith("?")) {
-    routeBuilder.toUrlEncoding += """
-if (${param.name} != null) {
-  queryParams.add((name: '${param.name}', value: base.toUrlEncoding<${param.type}>($converters, ${param.name}!)));
+  return lines.join("\n");
 }
-""";
-  } else {
-    routeBuilder.toUrlEncoding += """
-queryParams.add((name: '${param.name}', value: base.toUrlEncoding<${param.type}>($converters, ${param.name})));
-""";
+
+void addParamDefaultValueImports(BuildContext context, Route route) {
+  for (final param in route.params) {
+    if (param is Optional && param.importDefaultAs != null) {
+      context.addFileImport("${route.folderPath}/${param.fullName}", additional: " as ${param.importDefaultAs}");
+    }
   }
 }
 
-class RouteBuilder {
-  String constructor = "";
-  String declarations = "";
-  String fromUrlEncoding = "";
-  String toUrlEncoding = "";
-  String instantiation = "";
-  String fieldGetters = "";
-  String routeGetters = "";
+String getFromUrlEncoding(List<Param> params) {
+  List<String> lines = List.empty(growable: true);
+  for (final param in params) {
+    if (param is UrlParam) {
+      lines.add("final ${param.name} = base.fromUrlEncoding<${param.type}>(${getConvertersName(param)}, state.params['${param.name}']);");
+    } else if (param is QueryParam) {
+      String defaultValue = param.defaultValue ?? "null";
+      lines.add("final ${param.name} = base.fromUrlEncoding<${param.type}>(${getConvertersName(param)}, state.queryParams['${param.name}'], defaultValue: $defaultValue);");
+    }
+  }
+  return lines.join("\n");
 }
 
 class BuildContext {
@@ -389,9 +380,8 @@ class BuildContext {
   String routeTree = "";
   String routes = "";
   String imports = "";
-  String currentRouteIs = "";
-  String currentRoute = "";
   String errorPageBuilder = "";
+  String currentRouteIs = "";
   final String projectName;
 
   factory BuildContext.readProjectName() {
@@ -423,17 +413,11 @@ bool currentRouteIs<T extends base.Route>(String location) {
   location = location.split("?")[0];
   $currentRouteIs
   throw Exception("Route detection failure");
-}  
-
-base.Route currentRoute(base.GoRouterState state, BuildContext context) {
-  $currentRoute
-  throw Exception("Route retrieval failure");
 }
 
 final routerData = base.FileRouterData(
-  $errorPageBuilder
   currentRouteIs: currentRouteIs,
-  currentRoute: currentRoute,
+  $errorPageBuilder
   routes: [
     $routeTree
   ],

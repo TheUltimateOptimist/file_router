@@ -26,22 +26,21 @@ Route extractRoute(Directory dir, Route? previous) {
   assert(dirName.startsWith("+") || dirName.startsWith("[") || dirName.startsWith("{"));
   final Route route;
   if (dirName.startsWith("+") || dirName.startsWith("[")) {
+    final pageFile = dir.listSync().whereType<File>().singleWhere((file) => file.name.startsWith("+") && file.name != "+redirect.dart");
+    final routeName = getRouteName(pageFile.name);
+    final params = extractUrlParams(dir.name) + extractQueryParams(dir, routeName) + extractExtraParams(dir, routeName);
     final relativeUrl = dirName.replaceAll("+", "").split("%").map((part) {
       if (part.startsWith("[")) {
-        return ":${parseParamString(part.withoutSurroundingChars()).name}";
+        return ":${parseParamString(part.withoutSurroundingChars(), routeName).name}";
       }
       return part;
     }).join("/");
-    final params = extractParams(dir);
-    final pageFile = dir
-        .listSync()
-        .whereType<File>()
-        .singleWhere((file) => file.name.startsWith("+") && file.name != "+redirect.dart");
-    route = RegularRoute(dirPath, pageFile.name, previous, relativeUrl, params);
+    route = RegularRoute(dirPath, pageFile.name, previous, params, relativeUrl);
   } else if (dirName.startsWith("{")) {
-    final shellFile =
-        dir.listSync().whereType<File>().singleWhere((file) => file.name.startsWith("{"));
-    route = ShellRoute(dirPath, shellFile.name, previous);
+    final shellFile = dir.listSync().whereType<File>().singleWhere((file) => file.name.startsWith("{"));
+    final routeName = getRouteName(shellFile.name);
+    final params = extractQueryParams(dir, routeName) + extractExtraParams(dir, routeName);
+    route = ShellRoute(dirPath, shellFile.name, previous, params);
   } else {
     throw Exception("first letter of dirName has to be +, [ or {");
   }
@@ -52,84 +51,77 @@ Route extractRoute(Directory dir, Route? previous) {
 }
 
 List<Directory> extractRouteDirs(Directory dir) {
-  return dir
-      .listSync()
-      .whereType<Directory>()
-      .where(
-        (dir) => dir.name.startsWith("+") || dir.name.startsWith("[") || dir.name.startsWith("{"),
-      )
-      .toList();
+  return dir.listSync().whereType<Directory>().where((dir) => dir.name.startsWith("+") || dir.name.startsWith("[") || dir.name.startsWith("{")).toList();
 }
 
-List<Param> extractParams(Directory dir) {
-  final dirName = basename(dir.path);
-  final List<Param> params = List.empty(growable: true);
-  params.addAll(extractUrlParams(dirName));
-  for (var file in dir.listSync().whereType<File>()) {
-    String fileName = file.name;
-    //RegEx matches strings that start with an integer greater than zero followed by a minus
-    //e.g. "34-sometext.dart", "1-lol.dart", "12-ahouse"
-    if (fileName.startsWith("=") || RegExp(r"\d{1,}-").matchAsPrefix(fileName) != null) {
-      final isExtraParam = fileName.startsWith("=");
-      bool importDefault = false;
-      String? defaultValue;
-      if (isExtraParam) {
-        fileName = fileName.substring(1);
-      } else {
-        fileName = fileName.split("-")[1];
-      }
-      if (fileName.contains("%%")) {
-        importDefault = true;
-        fileName = fileName.split("%%")[0];
-      } else if (fileName.contains("%")) {
-        final parts = fileName.split("%");
-        defaultValue = parts[1];
-        fileName = parts[0];
-      }
-      var (name: name, type: type) = parseParamString(fileName);
-      params.add(
-        isExtraParam
-            ? ExtraParam(
-                file.name,
-                name,
-                type,
-                defaultValue: defaultValue,
-                importDefault: importDefault,
-              )
-            : QueryParam(
-                file.name,
-                name,
-                type,
-                defaultValue: defaultValue,
-                importDefault: importDefault,
-              ),
-      );
-    }
-  }
-  return params;
+List<Param> extractExtraParams(Directory dir, String routeName) {
+  return dir.listSync().whereType<File>().where((file) => file.name.startsWith("=")).map<Param>((file) {
+    final parseResult = parseParamString(file.name.substring(1), routeName);
+    return ExtraParam(
+      file.name,
+      parseResult.name,
+      parseResult.type,
+      defaultValue: parseResult.defaultValue,
+      importDefaultAs: parseResult.importDefaultAs,
+    );
+  }).toList();
+}
+
+List<Param> extractQueryParams(Directory dir, String routeName) {
+  //RegEx matches strings that start with an integer greater than zero followed by a minus
+  //e.g. "34-sometext.dart", "1-lol.dart", "12-ahouse"
+  return dir.listSync().whereType<File>().where((file) => RegExp(r"\d{1,}-").matchAsPrefix(file.name) != null).map<Param>((file) {
+    final parseResult = parseParamString(file.name.split("-")[1], routeName);
+    return QueryParam(
+      file.name,
+      parseResult.name,
+      parseResult.type,
+      defaultValue: parseResult.defaultValue,
+      importDefaultAs: parseResult.importDefaultAs,
+    );
+  }).toList();
 }
 
 List<Param> extractUrlParams(String folderName) {
-  final parts = folderName.split("%").where((name) => name.startsWith("["));
-  List<Param> params = List.empty(growable: true);
-  for (final part in parts) {
-    var (name: name, type: type) = parseParamString(part.withoutSurroundingChars());
-    params.add(UrlParam(part, name, type));
-  }
-  return params;
+  return folderName.split("%").where((name) => name.startsWith("[")).map<Param>((paramString) {
+    final parseResult = parseParamString(paramString.withoutSurroundingChars(), "");
+    return UrlParam(paramString, parseResult.name, parseResult.type);
+  }).toList();
 }
 
-({String name, String type}) parseParamString(String input) {
+typedef ParamParseResult = ({String type, String name, String? defaultValue, String? importDefaultAs});
+
+ParamParseResult parseParamString(String input, String routeName) {
+  String? defaultValue;
+  bool importDefault = false;
+  if (input.contains("%%")) {
+    importDefault = true;
+    input = input.split("%%")[0];
+  } else if (input.contains("%")) {
+    final parts = input.split("%");
+    defaultValue = parts[1];
+    input = parts[0];
+  }
   final parts = input.split(";");
   String type = parts[0];
+  String name = parts.length > 1 ? parts[1] : parts[0].uncapitalize();
+
   //neccessary because windows does not allow "?" as part of filenames
   if (type.endsWith("N")) {
     type = "${type.substring(0, type.length - 1)}?";
   }
+
   //neccessary because windows does not allow "<", ">" as part of filenames
   type = type.replaceAll("{", "<").replaceAll("}", ">");
+
+  if (type.startsWith("String") && defaultValue != null) {
+    defaultValue = "'$defaultValue'";
+  }
+
   return (
-    name: parts.length > 1 ? parts[1] : parts[0].uncapitalize(),
     type: type,
+    name: name,
+    defaultValue: importDefault ? "${routeName}_$name.defaultValue" : defaultValue,
+    importDefaultAs: importDefault ? "${routeName}_$name" : null,
   );
 }

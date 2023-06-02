@@ -17,13 +17,13 @@ class Optional extends Param {
     super.name,
     super.type, {
     this.defaultValue,
-    this.importDefault = false,
+    this.importDefaultAs,
   });
 
   final String? defaultValue;
-  final bool importDefault;
+  final String? importDefaultAs;
 
-  bool get isRequired => defaultValue == null && !importDefault && !type.endsWith("?");
+  bool get isRequired => defaultValue == null && !type.endsWith("?");
 }
 
 class UrlParam extends Param {
@@ -39,11 +39,11 @@ class QueryParam extends Optional {
     super.name,
     super.type, {
     super.defaultValue,
-    super.importDefault = false,
+    super.importDefaultAs,
   });
 
   @override
-  String toString() => "QueryParam($fullName, $name, $type, $defaultValue, $importDefault)";
+  String toString() => "QueryParam($fullName, $name, $type, $defaultValue)";
 }
 
 class ExtraParam extends Optional {
@@ -52,9 +52,9 @@ class ExtraParam extends Optional {
     super.name,
     super.type, {
     super.defaultValue,
-    super.importDefault = false,
+    super.importDefaultAs,
   });
 
   @override
-  String toString() => "ExtraParam($fullName, $name, $type, $defaultValue, $importDefault)";
+  String toString() => "ExtraParam($fullName, $name, $type, $defaultValue)";
 }

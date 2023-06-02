@@ -43,8 +43,9 @@ class _FileRouterProviderState extends State<FileRouterProvider> {
 
   @override
   void initState() {
-    _route = widget.router.initialRoute;
+    _route = widget.router.currentRoute;
     widget.router.addListener(() {
+      print("listened");
       if (!isAPair(_route.location, widget.router.location)) {
         setState(() {
           _route = _route.previous!;
@@ -55,7 +56,9 @@ class _FileRouterProviderState extends State<FileRouterProvider> {
   }
 
   void setRoute<R extends Route>(R newRoute) {
+    print("new Route set to ${newRoute.runtimeType}");
     setState(() {
+      print("set state invoked");
       _route = newRoute;
     });
   }
@@ -71,30 +74,32 @@ class _FileRouterProviderState extends State<FileRouterProvider> {
 }
 
 typedef FileRouterRedirect<T extends Route> = FutureOr<Route?> Function(BuildContext, T);
-typedef FromGoRouterState<T extends Route> = T Function(GoRouterState, BuildContext);
-GoRouterRedirect getRedirect<T extends Route>(
-    FileRouterRedirect<T> fileRouterRedirect, FromGoRouterState<T> fromGoRouterState) {
+typedef FromGoRouterState<T extends Route> = T Function(GoRouterState);
+GoRouterRedirect getRedirect<T extends Route>(FileRouterRedirect<T> fileRouterRedirect, FromGoRouterState<T> fromGoRouterState) {
   return (BuildContext context, GoRouterState state) async {
-    final route = await fileRouterRedirect(context, fromGoRouterState(state, context));
-    if (route != null) {
-      InheritedRoute.of(context).setRoute<Route>(route);
+    print(InheritedRoute.of(context));
+    final fileRouter = FileRouter.of(context);
+    final T route;
+    if (state.extra case final extra?) {
+      route = extra as T;
+    } else {
+      route = fromGoRouterState(state);
     }
-    return route?.location;
+    final newRoute = await fileRouterRedirect(context, route);
+    return newRoute?.location;
   };
 }
 
 typedef FileRouterErrorBuilder = Widget Function(BuildContext, Route);
 GoRouterWidgetBuilder getErrorBuilder(FileRouterErrorBuilder fileRouterErrorBuilder) {
   return (BuildContext context, GoRouterState state) {
-    final route = context.currentRoute(state);
+    final route = context.currentRoute();
     return fileRouterErrorBuilder(context, route);
   };
 }
 
-String createLocation(
-    String relativeUrl, List<({String name, String value})> queryParams, Route? previous) {
-  String topQueryString =
-      queryParams.map((queryParam) => "${queryParam.name}=${queryParam.value}").join("&");
+String createLocation(String relativeUrl, List<QueryParam> queryParams, Route? previous) {
+  String topQueryString = queryParams.map((queryParam) => "${queryParam.name}=${queryParam.value}").join("&");
   if (previous == null) {
     final queryString = topQueryString.isNotEmpty ? "?$topQueryString" : "";
     return "$relativeUrl$queryString";
@@ -115,49 +120,64 @@ String createLocation(
   }
 }
 
-R? getRoute<R extends Route>(Route topRoute) {
-  Route? route = topRoute;
+R getRoute<R extends Route>(BuildContext context) {
+  Route? route = InheritedRoute.of(context).route;
+  print(FileRouter.of(context).currentRoute);
+  print("found route: $route");
   while (route != null) {
     if (route is R) {
       return route;
     }
     route = route.previous;
   }
-  return route as R?;
+  throw Exception("The $R could not be find");
 }
 
 class FileRouter extends GoRouter {
   FileRouter(
     this.data, {
-    required this.initialRoute,
+    required Route initialRoute,
     super.refreshListenable,
     super.redirectLimit = 5,
     super.routerNeglect = false,
     super.observers,
     super.debugLogDiagnostics = false,
     super.restorationScopeId,
-  }) : super(
+  })  : currentRoute = initialRoute,
+        super(
           routes: data.routes,
           errorBuilder: data.errorBuilder,
           errorPageBuilder: data.errorPageBuilder,
           redirect: data.redirect,
           initialLocation: initialRoute.location,
           initialExtra: initialRoute,
-        );
+        ) {
+    addListener(() {
+      bool isNotAPair = !isAPair(currentRoute.location, location);
+      if (!hasListened) {
+        hasListened = true;
+        if (isNotAPair) {
+          //TODO: instantiate from go router state
+        }
+      }
+      if (hasListened && !isAPair(currentRoute.location, location)) {
+        currentRoute = currentRoute.previous!;
+      }
+    });
+  }
   final FileRouterData data;
-  final Route initialRoute;
+  Route currentRoute;
+  bool hasListened = false;
 
   bool currentRouteIs<T extends Route>() {
     return data.currentRouteIs<T>(location);
   }
 
-  Route currentRoute(GoRouterState state, BuildContext context) {
-    return data.currentRoute(state, context);
-  }
-
   void goRoute<R extends Route>(R route, BuildContext context) {
+    currentRoute = route;
     InheritedRoute.of(context).setRoute(route);
-    return go(route.location);
+    print(route.location);
+    return go(route.location, extra: route);
   }
 
   Future<T?> pushRoute<T extends Object?, R extends Route>(R route, BuildContext context) {
@@ -199,14 +219,13 @@ extension FileRouterExtension on BuildContext {
 
   bool currentRouteIs<T extends Route>() => FileRouter.of(this).currentRouteIs<T>();
 
-  Route currentRoute(GoRouterState state) => FileRouter.of(this).currentRoute(state, this);
+  Route currentRoute() => FileRouter.of(this).currentRoute;
 }
 
 class FileRouterData {
   const FileRouterData({
     required this.routes,
     required this.currentRouteIs,
-    required this.currentRoute,
     this.errorBuilder,
     this.errorPageBuilder,
     this.redirect,
@@ -216,7 +235,6 @@ class FileRouterData {
   final Page<dynamic> Function(BuildContext, GoRouterState)? errorPageBuilder;
   final FutureOr<String?> Function(BuildContext, GoRouterState)? redirect;
   final bool Function<T extends Route>(String) currentRouteIs;
-  final Route Function(GoRouterState, BuildContext) currentRoute;
 }
 
 abstract class StatelessPage<T extends Route> extends StatelessWidget {
@@ -231,25 +249,25 @@ abstract class StatefulPage<T extends Route> extends StatefulWidget {
   final T route;
 }
 
-abstract class StatelessShell extends StatelessWidget {
+abstract class StatelessShell<T extends Route> extends StatelessWidget {
   const StatelessShell({
     super.key,
     required this.route,
     required this.child,
   });
 
-  final Route route;
+  final T route;
   final Widget child;
 }
 
-abstract class StatefulShell extends StatefulWidget {
+abstract class StatefulShell<T extends Route> extends StatefulWidget {
   const StatefulShell({
     super.key,
     required this.route,
     required this.child,
   });
 
-  final Route route;
+  final T route;
   final Widget child;
 }
 
@@ -258,13 +276,30 @@ abstract class Converter<T> {
   T fromUrlEncoding(String data);
 }
 
-T fromUrlEncoding<T>(List<Converter> customConverters, String data) {
-  for (final converter in customConverters) {
-    if (converter is Converter<T>) {
-      return converter.fromUrlEncoding(data);
-    }
+T fromUrlEncoding<T>(List<Converter> customConverters, String? data, {T? defaultValue}) {
+  switch ((data, defaultValue)) {
+    case (null, null):
+      return null as T;
+    case (null, var defaultValue?):
+      return defaultValue;
+    case (var data?, _):
+      {
+        for (final converter in customConverters) {
+          if (converter is Converter<T>) {
+            return converter.fromUrlEncoding(data);
+          }
+        }
+        throw Exception("fromUrlEncoding could not find a converter for the type $T");
+      }
   }
-  throw Exception("fromUrlEncoding could not find a converter for the type $T");
+  throw Exception("the arguments given to fromUrlEncoding are incorrect");
+}
+
+class QueryParam {
+  const QueryParam(this.name, this.value);
+
+  final String name;
+  final String value;
 }
 
 String toUrlEncoding<T>(List<Converter> customConverters, T data) {
@@ -274,6 +309,12 @@ String toUrlEncoding<T>(List<Converter> customConverters, T data) {
     }
   }
   throw Exception("toUrlEncoding could not find a converter for the type $T");
+}
+
+void addQueryParam<T>(List<Converter> customConverters, String name, T? data, List<QueryParam> queryParams) {
+  if (data != null) {
+    queryParams.add(QueryParam(name, toUrlEncoding<T>(customConverters, data)));
+  }
 }
 
 class IntConverter implements Converter<int> {
