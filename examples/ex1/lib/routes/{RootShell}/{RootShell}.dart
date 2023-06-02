@@ -2,7 +2,7 @@ import 'package:ex1/file_router.dart';
 
 import 'package:flutter/material.dart';
 
-class RootShell extends StatelessShell {
+class RootShell extends StatelessShell<HomePageRoute> {
   const RootShell({
     super.key,
     required super.route,
@@ -23,7 +23,7 @@ class RootShell extends StatelessShell {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.account_balance_outlined), label: "About"),
-          BottomNavigationBarItem(icon: Icon(Icons.car_crash), label: "Cars")
+          BottomNavigationBarItem(icon: Icon(Icons.car_crash), label: "Cars"),
         ],
         currentIndex: currentIndex,
         onTap: (value) {
@@ -31,13 +31,15 @@ class RootShell extends StatelessShell {
             case 0:
               return context.goRoute(const HomePageRoute(age: 4, myName: "hans"));
             case 1:
-              return context.goRoute(const AboutPageRoute(
-                HomePageRoute(myName: "lisa"),
-                id: 23,
-                name: "Jonathan",
-                isAdmin: true,
-                percentage: 34.5,
-              ));
+              return context.goRoute(
+                const AboutPageRoute(
+                  HomePageRoute(myName: "lisa"),
+                  id: 23,
+                  name: "Jonathan",
+                  isAdmin: true,
+                  percentage: 34.5,
+                ),
+              );
             case 2:
               return context.goRoute(
                 const CarsPageRoute(
