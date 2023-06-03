@@ -3,89 +3,187 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+typedef FromGoRouterState<T extends Route> = T Function(GoRouterState);
+
 abstract class Route {
   String get location;
   Route? get previous;
 }
 
-class InheritedRoute extends InheritedWidget {
-  InheritedRoute(this.route, this.setRoute, {required super.child});
+class GlobalRouter {
+  GlobalRouter._internal();
 
-  final Route route;
-  final void Function<R extends Route>(R) setRoute;
+  static final GlobalRouter _globalRouter = GlobalRouter._internal();
 
-  @override
-  bool updateShouldNotify(covariant InheritedWidget oldWidget) {
-    return false;
+  factory GlobalRouter() {
+    return _globalRouter;
   }
 
-  static InheritedRoute of(BuildContext context) {
-    final inheritedRoute = context.getInheritedWidgetOfExactType<InheritedRoute>();
-    if (inheritedRoute == null) {
-      throw Exception("InheritedRoute could not be find in the current context");
-    }
-    return inheritedRoute;
-  }
-}
+  late final List<RegularRouteData> regularRoutesData;
+  late Route route;
 
-class FileRouterProvider extends StatefulWidget {
-  const FileRouterProvider(this.router, {required this.child, super.key});
-
-  final Widget child;
-  final FileRouter router;
-
-  @override
-  State<FileRouterProvider> createState() => _FileRouterProviderState();
-}
-
-class _FileRouterProviderState extends State<FileRouterProvider> {
-  late Route _route;
-
-  @override
-  void initState() {
-    _route = widget.router.currentRoute;
-    widget.router.addListener(() {
-      print("listened");
-      if (!isAPair(_route.location, widget.router.location)) {
-        setState(() {
-          _route = _route.previous!;
-        });
-      }
-    });
-    super.initState();
-  }
-
-  void setRoute<R extends Route>(R newRoute) {
-    print("new Route set to ${newRoute.runtimeType}");
-    setState(() {
-      print("set state invoked");
-      _route = newRoute;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return InheritedRoute(
-      _route,
-      setRoute,
-      child: widget.child,
+  void updateRouteFrom(GoRouterState state) {
+    route = findCurrentRoute<Route>(
+      state.location,
+      (routeData) => routeData.fromGoRouterState(state),
     );
+  }
+
+  T getRoute<T extends Route>(GoRouterState state) => _getRoute(T, state) as T;
+
+  Route _getRoute(Type T, GoRouterState state) {
+    print("getting route $T");
+    final result = _maybeGetRoute(T);
+    if (result != null) {
+      return result;
+    }
+    updateRouteFrom(state);
+    return route;
+  }
+
+  T? maybeGetRoute<T extends Route>() => _maybeGetRoute(T) as T?;
+
+  Route? _maybeGetRoute(Type T) {
+    Route? route = this.route;
+    while (route != null) {
+      if (route.runtimeType == T) {
+        return route;
+      }
+      route = route.previous;
+    }
+    return null;
+  }
+
+  Route currentRoute(GoRouterState state) {
+    return findCurrentRoute<Route>(state.location, (foundRouteData) {
+      final route = _maybeGetRoute(foundRouteData.type);
+      if (route != null) {
+        return route;
+      }
+      final newRoute = foundRouteData.fromGoRouterState(state);
+      this.route = newRoute;
+      return newRoute;
+    });
+  }
+
+  T findCurrentRoute<T>(String location, T Function(RegularRouteData) extractor) {
+    print("finding current route of $location getting $T");
+    return _findCurrentRoute<T>(regularRoutesData, location.split("?")[0], extractor);
+  }
+
+  T _findCurrentRoute<T>(List<RegularRouteData> regularRoutesData, String location, T Function(RegularRouteData) extractor) {
+    for (final child in regularRoutesData) {
+      final childParts = child.path.splitUrl();
+      final locationParts = location.splitUrl();
+      print(childParts);
+      print(locationParts);
+      if (childParts.length > locationParts.length) {
+        continue;
+      }
+      int index = 0;
+      for (final childPart in childParts) {
+        if (childPart.startsWith(":") || childPart == locationParts[index]) {
+          index++;
+        } else {
+          break;
+        }
+      }
+      if (index == childParts.length && locationParts.length > childParts.length) {
+        return _findCurrentRoute<T>(child.children, locationParts.skip(childParts.length).join("/").replaceAll("//", "/"), extractor);
+      } else if (index == childParts.length) {
+        return extractor(child);
+      }
+    }
+    for (final child in regularRoutesData) {
+      print(child.toCustomString(""));
+    }
+    throw Exception("No matching Route Type could be find for $location, extracting $T");
+  }
+}
+
+extension SplitUrl on String {
+  List<String> splitUrl() {
+    if (startsWith("/")) {
+      final withoutLeading = substring(1);
+      if (withoutLeading.isNotEmpty) {
+        final result = withoutLeading.split("/");
+        result.insert(0, "/");
+        return result;
+      }
+      return ["/"];
+    }
+    return split("/");
+  }
+}
+
+class FileShellRoute extends ShellRoute implements ToRegularRouteData {
+  FileShellRoute({super.routes, super.builder});
+
+  @override
+  void toRegularRouteData(List<RegularRouteData> regularRoutesData) {
+    for (final route in routes) {
+      (route as ToRegularRouteData).toRegularRouteData(regularRoutesData);
+    }
+  }
+}
+
+abstract class ToRegularRouteData {
+  void toRegularRouteData(List<RegularRouteData> routes);
+}
+
+class FileRoute<T extends Route> extends GoRoute implements ToRegularRouteData {
+  FileRoute({
+    required super.path,
+    required this.fromGoRouterState,
+    required super.builder,
+    super.routes,
+    super.redirect,
+  });
+
+  final FromGoRouterState<T> fromGoRouterState;
+
+  @override
+  void toRegularRouteData(List<RegularRouteData> regularRoutesData) {
+    final children = List<RegularRouteData>.empty(growable: true);
+    for (final route in routes) {
+      assert(route is ToRegularRouteData);
+      if (route is FileRoute) {
+        route.toRegularRouteData(children);
+      } else if (route is FileShellRoute) {
+        route.toRegularRouteData(regularRoutesData);
+      }
+    }
+    regularRoutesData.add(RegularRouteData<T>(path, fromGoRouterState, children: children));
+  }
+}
+
+class RegularRouteData<T extends Route> {
+  const RegularRouteData(this.path, this.fromGoRouterState, {this.children = const []});
+
+  Type get type => T;
+
+  final String path;
+  final List<RegularRouteData> children;
+  final FromGoRouterState<T> fromGoRouterState;
+
+  String toCustomString(String leftSpace) {
+    final lines = List<String>.empty(growable: true);
+    lines.add("$leftSpace$T:$path:$fromGoRouterState");
+    for (final child in children) {
+      lines.add(child.toCustomString("    $leftSpace"));
+    }
+    return lines.join("\n");
   }
 }
 
 typedef FileRouterRedirect<T extends Route> = FutureOr<Route?> Function(BuildContext, T);
-typedef FromGoRouterState<T extends Route> = T Function(GoRouterState);
-GoRouterRedirect getRedirect<T extends Route>(FileRouterRedirect<T> fileRouterRedirect, FromGoRouterState<T> fromGoRouterState) {
+
+GoRouterRedirect getRedirect<T extends Route>(FileRouterRedirect<T> fileRouterRedirect) {
   return (BuildContext context, GoRouterState state) async {
-    print(InheritedRoute.of(context));
-    final fileRouter = FileRouter.of(context);
-    final T route;
-    if (state.extra case final extra?) {
-      route = extra as T;
-    } else {
-      route = fromGoRouterState(state);
+    final newRoute = await fileRouterRedirect(context, GlobalRouter().getRoute<T>(state));
+    if (newRoute != null) {
+      GlobalRouter().route = newRoute;
     }
-    final newRoute = await fileRouterRedirect(context, route);
     return newRoute?.location;
   };
 }
@@ -93,7 +191,7 @@ GoRouterRedirect getRedirect<T extends Route>(FileRouterRedirect<T> fileRouterRe
 typedef FileRouterErrorBuilder = Widget Function(BuildContext, Route);
 GoRouterWidgetBuilder getErrorBuilder(FileRouterErrorBuilder fileRouterErrorBuilder) {
   return (BuildContext context, GoRouterState state) {
-    final route = context.currentRoute();
+    final route = GlobalRouter().currentRoute(state);
     return fileRouterErrorBuilder(context, route);
   };
 }
@@ -120,19 +218,6 @@ String createLocation(String relativeUrl, List<QueryParam> queryParams, Route? p
   }
 }
 
-R getRoute<R extends Route>(BuildContext context) {
-  Route? route = InheritedRoute.of(context).route;
-  print(FileRouter.of(context).currentRoute);
-  print("found route: $route");
-  while (route != null) {
-    if (route is R) {
-      return route;
-    }
-    route = route.previous;
-  }
-  throw Exception("The $R could not be find");
-}
-
 class FileRouter extends GoRouter {
   FileRouter(
     this.data, {
@@ -143,8 +228,7 @@ class FileRouter extends GoRouter {
     super.observers,
     super.debugLogDiagnostics = false,
     super.restorationScopeId,
-  })  : currentRoute = initialRoute,
-        super(
+  }) : super(
           routes: data.routes,
           errorBuilder: data.errorBuilder,
           errorPageBuilder: data.errorPageBuilder,
@@ -152,46 +236,36 @@ class FileRouter extends GoRouter {
           initialLocation: initialRoute.location,
           initialExtra: initialRoute,
         ) {
-    addListener(() {
-      bool isNotAPair = !isAPair(currentRoute.location, location);
-      if (!hasListened) {
-        hasListened = true;
-        if (isNotAPair) {
-          //TODO: instantiate from go router state
-        }
-      }
-      if (hasListened && !isAPair(currentRoute.location, location)) {
-        currentRoute = currentRoute.previous!;
-      }
-    });
+    GlobalRouter().route = initialRoute;
+    final regularRoutesData = List<RegularRouteData>.empty(growable: true);
+    for (final route in data.routes) {
+      (route as ToRegularRouteData).toRegularRouteData(regularRoutesData);
+    }
+    GlobalRouter().regularRoutesData = regularRoutesData;
+    for (final routesData in regularRoutesData) {
+      print(routesData.toCustomString(""));
+    }
   }
-  final FileRouterData data;
-  Route currentRoute;
-  bool hasListened = false;
 
-  bool currentRouteIs<T extends Route>() {
-    return data.currentRouteIs<T>(location);
-  }
+  final FileRouterData data;
 
   void goRoute<R extends Route>(R route, BuildContext context) {
-    currentRoute = route;
-    InheritedRoute.of(context).setRoute(route);
-    print(route.location);
+    GlobalRouter().route = route;
     return go(route.location, extra: route);
   }
 
   Future<T?> pushRoute<T extends Object?, R extends Route>(R route, BuildContext context) {
-    InheritedRoute.of(context).setRoute(route);
+    GlobalRouter().route = route;
     return push(route.location);
   }
 
   void pushReplacementRoute<R extends Route>(R route, BuildContext context) {
-    InheritedRoute.of(context).setRoute(route);
+    GlobalRouter().route = route;
     return pushReplacement(route.location);
   }
 
   void replaceRoute<R extends Route>(R route, BuildContext context) {
-    InheritedRoute.of(context).setRoute(route);
+    GlobalRouter().route = route;
     return replace(route.location);
   }
 
@@ -216,16 +290,11 @@ extension FileRouterExtension on BuildContext {
   void replaceRoute<R extends Route>(R route) {
     FileRouter.of(this).replaceRoute(route, this);
   }
-
-  bool currentRouteIs<T extends Route>() => FileRouter.of(this).currentRouteIs<T>();
-
-  Route currentRoute() => FileRouter.of(this).currentRoute;
 }
 
 class FileRouterData {
   const FileRouterData({
     required this.routes,
-    required this.currentRouteIs,
     this.errorBuilder,
     this.errorPageBuilder,
     this.redirect,
@@ -234,7 +303,6 @@ class FileRouterData {
   final Widget Function(BuildContext, GoRouterState)? errorBuilder;
   final Page<dynamic> Function(BuildContext, GoRouterState)? errorPageBuilder;
   final FutureOr<String?> Function(BuildContext, GoRouterState)? redirect;
-  final bool Function<T extends Route>(String) currentRouteIs;
 }
 
 abstract class StatelessPage<T extends Route> extends StatelessWidget {
@@ -362,25 +430,4 @@ class StringConverter implements Converter<String> {
 
   @override
   String toUrlEncoding(String data) => data;
-}
-
-bool isAPair(String route, String location) {
-  route = route.substring(1);
-  location = location.substring(1);
-  if (route.isEmpty && location.isEmpty) {
-    return true;
-  }
-  final routeParts = route.split('/');
-  final locationParts = location.split('/');
-  if (routeParts.length != locationParts.length) {
-    return false;
-  }
-  for (int i = 0; i < locationParts.length; i++) {
-    final locationPart = locationParts[i];
-    final routePart = routeParts[i];
-    if (!routePart.startsWith(":") && routePart != locationPart) {
-      return false;
-    }
-  }
-  return true;
 }

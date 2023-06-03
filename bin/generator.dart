@@ -6,22 +6,6 @@ import 'routes.dart';
 import 'extensions/io.dart';
 import "package:pubspec_parse/pubspec_parse.dart";
 
-String getAbsoluteUrl(RegularRoute topRoute) {
-  String url = "";
-  Route? route = topRoute;
-  while (route != null) {
-    if (route is RegularRoute) {
-      url = "${route.relativeUrl}/$url";
-    }
-    route = route.previous;
-  }
-  url = url.substring(0, url.length - 1);
-  if (url.startsWith("//")) {
-    url = url.substring(1);
-  }
-  return url;
-}
-
 void generateSource(List<Route> routes) {
   final context = BuildContext.readProjectName();
   addErrorBuilder(context);
@@ -122,7 +106,6 @@ void generateRouteSource(BuildContext context, Route route) {
     case RegularRoute():
       addRegularRoute(context, route);
       addRedirect(context, route);
-      addCurrentRouteIs(context, route);
     case ShellRoute():
       addShellRoute(context, route);
   }
@@ -133,14 +116,6 @@ void generateRouteSource(BuildContext context, Route route) {
     context.routeTree += "],";
   }
   context.routeTree += "),";
-}
-
-void addCurrentRouteIs(BuildContext context, RegularRoute route) {
-  context.currentRouteIs += """
-if (T == ${route.routeName}) {
-  return base.isAPair('${getAbsoluteUrl(route)}', location);
-}  
-""";
 }
 
 void addRedirect(BuildContext context, RegularRoute route) {
@@ -193,10 +168,10 @@ String getAbstractGetters(List<Param> params) {
 
 void addShellRoute(BuildContext context, ShellRoute route) {
   context.routeTree += """
-base.ShellRoute(
+base.FileShellRoute(
   builder: (BuildContext context, base.GoRouterState state, Widget child){
-    final storedRoute = base.InheritedRoute.of(context).route as ${getShellRouteType(route)};
-    return ${route.pageName}(route: storedRoute, child: child);
+    final route = base.GlobalRouter().currentRoute(state) as ${getShellRouteType(route)};
+    return ${route.pageName}(route: route, child: child);
   },
   ${route.children.isEmpty ? '' : 'routes: ['}
 """;
@@ -219,10 +194,11 @@ void addRegularRoute(BuildContext context, RegularRoute route) {
     previous = (constructor: "this.previous, ", definition: "@override\nfinal ${parentRegularRoute.routeName} previous;");
   }
   context.routeTree += """
-base.GoRoute(
+base.FileRoute<${route.routeName}>(
+  fromGoRouterState: ${route.routeName}.fromGoRouterState,
   path: $relativeUrl,
   builder: (BuildContext context, base.GoRouterState state) {
-    return ${route.pageName}(base.getRoute<${route.routeName}>(context));
+    return ${route.pageName}(base.GlobalRouter().getRoute<${route.routeName}>(state));
   },
   ${route.children.isEmpty ? '' : 'routes: ['}
 """;
@@ -242,6 +218,7 @@ class ${route.routeName} implements ${getParentType(route)} {
     return base.createLocation(${relativeUrl.replaceAll(":", "\$")}, queryParams, previous);
   }
 
+  ${route.routeName} get ${route.routeName.uncapitalize()} => this;
   ${getRouteAndFieldGetters(route)}
 }
 """;
@@ -381,7 +358,6 @@ class BuildContext {
   String routes = "";
   String imports = "";
   String errorPageBuilder = "";
-  String currentRouteIs = "";
   final String projectName;
 
   factory BuildContext.readProjectName() {
@@ -409,14 +385,7 @@ $routes
 
 const builtInConverters = <base.Converter>[base.IntConverter(), base.StringConverter(), base.BoolConverter(), base.DoubleConverter()];
 
-bool currentRouteIs<T extends base.Route>(String location) {
-  location = location.split("?")[0];
-  $currentRouteIs
-  throw Exception("Route detection failure");
-}
-
 final routerData = base.FileRouterData(
-  currentRouteIs: currentRouteIs,
   $errorPageBuilder
   routes: [
     $routeTree

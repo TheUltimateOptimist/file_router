@@ -12,9 +12,9 @@ class RootShell extends StatelessShell<HomePageRoute> {
   @override
   Widget build(BuildContext context) {
     int currentIndex = 0;
-    if (context.currentRouteIs<AboutPageRoute>()) {
+    if (route is AboutPageRoute) {
       currentIndex = 1;
-    } else if (context.currentRouteIs<CarsPageRoute>() || context.currentRouteIs<CarPageRoute>()) {
+    } else if (route is CarsPageRoute) {
       currentIndex = 2;
     }
     return Scaffold(
@@ -29,11 +29,11 @@ class RootShell extends StatelessShell<HomePageRoute> {
         onTap: (value) {
           switch (value) {
             case 0:
-              return context.goRoute(const HomePageRoute(age: 4, myName: "hans"));
+              return context.goRoute(route.homePageRoute);
             case 1:
               return context.goRoute(
-                const AboutPageRoute(
-                  HomePageRoute(myName: "lisa"),
+                AboutPageRoute(
+                  route,
                   id: 23,
                   name: "Jonathan",
                   isAdmin: true,
@@ -42,8 +42,8 @@ class RootShell extends StatelessShell<HomePageRoute> {
               );
             case 2:
               return context.goRoute(
-                const CarsPageRoute(
-                  HomePageRoute(myName: "some"),
+                CarsPageRoute(
+                  route,
                 ),
               );
           }
