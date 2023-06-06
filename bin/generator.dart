@@ -187,11 +187,22 @@ void addRegularRoute(BuildContext context, RegularRoute route) {
   final params = getRouteParams(route);
   final relativeUrl = "'${route.relativeUrl}'";
   final parentRegularRoute = getParentRegularRoute(route);
-  final ({String constructor, String definition}) previous;
+  final ({String constructor, String definition, String instantiation}) previous;
+  final String constString;
   if (parentRegularRoute == null) {
-    previous = (constructor: "", definition: "@override\nbase.Route? get previous => null;");
+    previous = (
+      constructor: "",
+      definition: "@override\nbase.Route? get previous => null;",
+      instantiation: "",
+    );
+    constString = "const ";
   } else {
-    previous = (constructor: "this.previous, ", definition: "@override\nfinal ${parentRegularRoute.routeName} previous;");
+    previous = (
+      constructor: "${parentRegularRoute.routeName} previous, ",
+      definition: "@override\nfinal ${parentRegularRoute.routeName} previous;",
+      instantiation: " : previous = base.getRoute<${parentRegularRoute.routeName}>(previous)",
+    );
+    constString = "";
   }
   context.routeTree += """
 base.FileRoute<${route.routeName}>(
@@ -204,7 +215,7 @@ base.FileRoute<${route.routeName}>(
 """;
   context.routes += """
 class ${route.routeName} implements ${getParentType(route)} {
-  const ${route.routeName}(${previous.constructor}${getParamDeclarations(params)});
+  $constString${route.routeName}(${previous.constructor}${getParamDeclarations(params)})${previous.instantiation};
 
   ${previous.definition}
   ${getParamDefinitions(params)}

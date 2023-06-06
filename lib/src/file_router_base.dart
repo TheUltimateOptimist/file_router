@@ -10,6 +10,17 @@ abstract class Route {
   Route? get previous;
 }
 
+R getRoute<R extends Route>(Route parent) {
+  Route? route = parent;
+  while (route != null) {
+    if (route.runtimeType == R) {
+      return route as R;
+    }
+    route = route.previous;
+  }
+  throw Exception("The route $R could not be find from the parent $parent");
+}
+
 class GlobalRouter {
   GlobalRouter._internal();
 
