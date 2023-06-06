@@ -32,7 +32,6 @@ class GlobalRouter {
   T getRoute<T extends Route>(GoRouterState state) => _getRoute(T, state) as T;
 
   Route _getRoute(Type T, GoRouterState state) {
-    print("getting route $T");
     final result = _maybeGetRoute(T);
     if (result != null) {
       return result;
@@ -67,7 +66,6 @@ class GlobalRouter {
   }
 
   T findCurrentRoute<T>(String location, T Function(RegularRouteData) extractor) {
-    print("finding current route of $location getting $T");
     return _findCurrentRoute<T>(regularRoutesData, location.split("?")[0], extractor);
   }
 
@@ -75,8 +73,6 @@ class GlobalRouter {
     for (final child in regularRoutesData) {
       final childParts = child.path.splitUrl();
       final locationParts = location.splitUrl();
-      print(childParts);
-      print(locationParts);
       if (childParts.length > locationParts.length) {
         continue;
       }
@@ -242,9 +238,6 @@ class FileRouter extends GoRouter {
       (route as ToRegularRouteData).toRegularRouteData(regularRoutesData);
     }
     GlobalRouter().regularRoutesData = regularRoutesData;
-    for (final routesData in regularRoutesData) {
-      print(routesData.toCustomString(""));
-    }
   }
 
   final FileRouterData data;
