@@ -1,1 +1,0 @@
-const defaultValue = "Jonathan";
