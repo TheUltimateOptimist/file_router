@@ -10,9 +10,11 @@ import 'package:ex1/routes/+error.dart';
 import 'package:ex1/types.dart';
 import 'package:ex1/routes/{RootShell}/{RootShell}.dart';
 import 'package:ex1/routes/{RootShell}/+%/+HomePage.dart';
-import 'package:ex1/routes/{RootShell}/+%/1-List{int};numbers%%.dart' as HomePageRoute_numbers;
+import 'package:ex1/routes/{RootShell}/+%/1-List{int};numbers%%.dart'
+    as HomePageRoute_numbers;
 import 'package:ex1/routes/{RootShell}/+%/+about/+AboutPage.dart';
-import 'package:ex1/routes/{RootShell}/+%/+about/+redirect.dart' as aboutPageRouteRedirect;
+import 'package:ex1/routes/{RootShell}/+%/+about/+redirect.dart'
+    as aboutPageRouteRedirect;
 import 'package:ex1/routes/{RootShell}/+%/+cars/+CarsPage.dart';
 import 'package:ex1/routes/{RootShell}/+%/+cars/[int;carId]/+CarPage.dart';
 
@@ -35,7 +37,8 @@ class HomePageRoute implements RootShellRoute {
   final String myName;
 
   static HomePageRoute fromGoRouterState(base.GoRouterState state) {
-    throw Exception('The HomePageRoute has required extra parameters. Therefore it can not be instantiated from the location alone.');
+    throw Exception(
+        'The HomePageRoute has required extra parameters. Therefore it can not be instantiated from the location alone.');
   }
 
   @override
@@ -44,17 +47,19 @@ class HomePageRoute implements RootShellRoute {
     base.addQueryParam<List<int>>(converters, 'numbers', numbers, queryParams);
     return base.createLocation('/', queryParams, previous);
   }
+
+  HomePageRoute get homePageRoute => this;
 }
 
 class AboutPageRoute implements HomePageRoute {
-  const AboutPageRoute(
-    this.previous, {
+  AboutPageRoute(
+    HomePageRoute previous, {
     this.parentAge,
     required this.id,
     required this.isAdmin,
     required this.percentage,
     required this.name,
-  });
+  }) : previous = base.getRoute<HomePageRoute>(previous);
 
   @override
   final HomePageRoute previous;
@@ -65,11 +70,20 @@ class AboutPageRoute implements HomePageRoute {
   final String name;
 
   static AboutPageRoute fromGoRouterState(base.GoRouterState state) {
-    final parentAge = base.fromUrlEncoding<int?>(builtInConverters, state.queryParams['parentAge'], defaultValue: null);
-    final id = base.fromUrlEncoding<int>(builtInConverters, state.queryParams['id'], defaultValue: null);
-    final isAdmin = base.fromUrlEncoding<bool>(builtInConverters, state.queryParams['isAdmin'], defaultValue: null);
-    final percentage = base.fromUrlEncoding<double>(builtInConverters, state.queryParams['percentage'], defaultValue: null);
-    final name = base.fromUrlEncoding<String>(builtInConverters, state.queryParams['name'], defaultValue: null);
+    final parentAge = base.fromUrlEncoding<int?>(
+        builtInConverters, state.queryParams['parentAge'],
+        defaultValue: null);
+    final id = base.fromUrlEncoding<int>(builtInConverters, state.queryParams['id'],
+        defaultValue: null);
+    final isAdmin = base.fromUrlEncoding<bool>(
+        builtInConverters, state.queryParams['isAdmin'],
+        defaultValue: null);
+    final percentage = base.fromUrlEncoding<double>(
+        builtInConverters, state.queryParams['percentage'],
+        defaultValue: null);
+    final name = base.fromUrlEncoding<String>(
+        builtInConverters, state.queryParams['name'],
+        defaultValue: null);
     return AboutPageRoute(
       HomePageRoute.fromGoRouterState(state),
       parentAge: parentAge,
@@ -91,6 +105,7 @@ class AboutPageRoute implements HomePageRoute {
     return base.createLocation('about', queryParams, previous);
   }
 
+  AboutPageRoute get aboutPageRoute => this;
   HomePageRoute get homePageRoute => previous;
   @override
   List<int> get numbers => previous.numbers;
@@ -101,9 +116,9 @@ class AboutPageRoute implements HomePageRoute {
 }
 
 class CarsPageRoute implements HomePageRoute {
-  const CarsPageRoute(
-    this.previous,
-  );
+  CarsPageRoute(
+    HomePageRoute previous,
+  ) : previous = base.getRoute<HomePageRoute>(previous);
 
   @override
   final HomePageRoute previous;
@@ -121,6 +136,7 @@ class CarsPageRoute implements HomePageRoute {
     return base.createLocation('cars', queryParams, previous);
   }
 
+  CarsPageRoute get carsPageRoute => this;
   HomePageRoute get homePageRoute => previous;
   @override
   List<int> get numbers => previous.numbers;
@@ -131,10 +147,10 @@ class CarsPageRoute implements HomePageRoute {
 }
 
 class CarPageRoute implements CarsPageRoute {
-  const CarPageRoute(
-    this.previous,
+  CarPageRoute(
+    CarsPageRoute previous,
     this.carId,
-  );
+  ) : previous = base.getRoute<CarsPageRoute>(previous);
 
   @override
   final CarsPageRoute previous;
@@ -155,6 +171,7 @@ class CarPageRoute implements CarsPageRoute {
     return base.createLocation('$carId', queryParams, previous);
   }
 
+  CarPageRoute get carPageRoute => this;
   CarsPageRoute get carsPageRoute => previous;
   HomePageRoute get homePageRoute => previous.previous;
   @override
@@ -165,59 +182,49 @@ class CarPageRoute implements CarsPageRoute {
   String get myName => previous.previous.myName;
 }
 
-const builtInConverters = <base.Converter>[base.IntConverter(), base.StringConverter(), base.BoolConverter(), base.DoubleConverter()];
-
-bool currentRouteIs<T extends base.Route>(String location) {
-  location = location.split("?")[0];
-  if (T == HomePageRoute) {
-    return base.isAPair('/', location);
-  }
-  if (T == AboutPageRoute) {
-    return base.isAPair('/about', location);
-  }
-  if (T == CarsPageRoute) {
-    return base.isAPair('/cars', location);
-  }
-  if (T == CarPageRoute) {
-    return base.isAPair('/cars/:carId', location);
-  }
-
-  throw Exception("Route detection failure");
-}
+const builtInConverters = <base.Converter>[
+  base.IntConverter(),
+  base.StringConverter(),
+  base.BoolConverter(),
+  base.DoubleConverter()
+];
 
 final routerData = base.FileRouterData(
-  currentRouteIs: currentRouteIs,
   errorBuilder: base.getErrorBuilder(error),
   routes: [
-    base.ShellRoute(
+    base.FileShellRoute(
       builder: (BuildContext context, base.GoRouterState state, Widget child) {
-        final storedRoute = base.InheritedRoute.of(context).route as HomePageRoute;
-        return RootShell(route: storedRoute, child: child);
+        final route = base.GlobalRouter().currentRoute(state) as HomePageRoute;
+        return RootShell(route: route, child: child);
       },
       routes: [
-        base.GoRoute(
+        base.FileRoute<HomePageRoute>(
+          fromGoRouterState: HomePageRoute.fromGoRouterState,
           path: '/',
           builder: (BuildContext context, base.GoRouterState state) {
-            return HomePage(base.getRoute<HomePageRoute>(context));
+            return HomePage(base.GlobalRouter().getRoute<HomePageRoute>(state));
           },
           routes: [
-            base.GoRoute(
+            base.FileRoute<AboutPageRoute>(
+              fromGoRouterState: AboutPageRoute.fromGoRouterState,
               path: 'about',
               builder: (BuildContext context, base.GoRouterState state) {
-                return AboutPage(base.getRoute<AboutPageRoute>(context));
+                return AboutPage(base.GlobalRouter().getRoute<AboutPageRoute>(state));
               },
-              redirect: base.getRedirect<AboutPageRoute>(aboutPageRouteRedirect.redirect, AboutPageRoute.fromGoRouterState),
+              redirect: base.getRedirect<AboutPageRoute>(aboutPageRouteRedirect.redirect),
             ),
-            base.GoRoute(
+            base.FileRoute<CarsPageRoute>(
+              fromGoRouterState: CarsPageRoute.fromGoRouterState,
               path: 'cars',
               builder: (BuildContext context, base.GoRouterState state) {
-                return CarsPage(base.getRoute<CarsPageRoute>(context));
+                return CarsPage(base.GlobalRouter().getRoute<CarsPageRoute>(state));
               },
               routes: [
-                base.GoRoute(
+                base.FileRoute<CarPageRoute>(
+                  fromGoRouterState: CarPageRoute.fromGoRouterState,
                   path: ':carId',
                   builder: (BuildContext context, base.GoRouterState state) {
-                    return CarPage(base.getRoute<CarPageRoute>(context));
+                    return CarPage(base.GlobalRouter().getRoute<CarPageRoute>(state));
                   },
                 ),
               ],
