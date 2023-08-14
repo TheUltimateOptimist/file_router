@@ -43,35 +43,14 @@ class GlobalRouter {
   T getRoute<T extends Route>(GoRouterState state) => _getRoute(T, state) as T;
 
   Route _getRoute(Type T, GoRouterState state) {
-    final result = _maybeGetRoute(T);
-    if (result != null) {
-      return result;
-    }
     updateRouteFrom(state);
     return route;
   }
 
-  T? maybeGetRoute<T extends Route>() => _maybeGetRoute(T) as T?;
-
-  Route? _maybeGetRoute(Type T) {
-    Route? route = this.route;
-    while (route != null) {
-      if (route.runtimeType == T) {
-        return route;
-      }
-      route = route.previous;
-    }
-    return null;
-  }
-
   Route currentRoute(GoRouterState state) {
     return findCurrentRoute<Route>(state.location, (foundRouteData) {
-      final route = _maybeGetRoute(foundRouteData.type);
-      if (route != null) {
-        return route;
-      }
       final newRoute = foundRouteData.fromGoRouterState(state);
-      this.route = newRoute;
+      route = newRoute;
       return newRoute;
     });
   }
