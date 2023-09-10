@@ -31,7 +31,7 @@ class GlobalRouter {
   }
 
   late final List<RegularRouteData> regularRoutesData;
-  late Route route;
+  Route? route;
 
   void updateRouteFrom(GoRouterState state) {
     route = findCurrentRoute<Route>(
@@ -43,23 +43,36 @@ class GlobalRouter {
   T getRoute<T extends Route>(GoRouterState state) => _getRoute(T, state) as T;
 
   Route _getRoute(Type T, GoRouterState state) {
+    if (route != null && route.runtimeType == T) {
+      return route!;
+    }
     updateRouteFrom(state);
-    return route;
+    return route!;
   }
 
   Route currentRoute(GoRouterState state) {
-    return findCurrentRoute<Route>(state.location, (foundRouteData) {
-      final newRoute = foundRouteData.fromGoRouterState(state);
-      route = newRoute;
-      return newRoute;
+    final constructed =
+        findCurrentRoute<Route>(state.location, (foundRouteData) {
+      return foundRouteData.fromGoRouterState(state);
     });
+    print(route);
+    if (route != null &&
+        route.runtimeType == constructed.runtimeType &&
+        route == constructed) {
+      return route!;
+    }
+    route = constructed;
+    return constructed;
   }
 
-  T findCurrentRoute<T>(String location, T Function(RegularRouteData) extractor) {
-    return _findCurrentRoute<T>(regularRoutesData, location.split("?")[0], extractor);
+  T findCurrentRoute<T>(
+      String location, T Function(RegularRouteData) extractor) {
+    return _findCurrentRoute<T>(
+        regularRoutesData, location.split("?")[0], extractor);
   }
 
-  T _findCurrentRoute<T>(List<RegularRouteData> regularRoutesData, String location, T Function(RegularRouteData) extractor) {
+  T _findCurrentRoute<T>(List<RegularRouteData> regularRoutesData,
+      String location, T Function(RegularRouteData) extractor) {
     for (final child in regularRoutesData) {
       final childParts = child.path.splitUrl();
       final locationParts = location.splitUrl();
@@ -74,8 +87,15 @@ class GlobalRouter {
           break;
         }
       }
-      if (index == childParts.length && locationParts.length > childParts.length) {
-        return _findCurrentRoute<T>(child.children, locationParts.skip(childParts.length).join("/").replaceAll("//", "/"), extractor);
+      if (index == childParts.length &&
+          locationParts.length > childParts.length) {
+        return _findCurrentRoute<T>(
+            child.children,
+            locationParts
+                .skip(childParts.length)
+                .join("/")
+                .replaceAll("//", "/"),
+            extractor);
       } else if (index == childParts.length) {
         return extractor(child);
       }
@@ -83,7 +103,8 @@ class GlobalRouter {
     for (final child in regularRoutesData) {
       print(child.toCustomString(""));
     }
-    throw Exception("No matching Route Type could be find for $location, extracting $T");
+    throw Exception(
+        "No matching Route Type could be find for $location, extracting $T");
   }
 }
 
@@ -139,12 +160,14 @@ class FileRoute<T extends Route> extends GoRoute implements ToRegularRouteData {
         route.toRegularRouteData(regularRoutesData);
       }
     }
-    regularRoutesData.add(RegularRouteData<T>(path, fromGoRouterState, children: children));
+    regularRoutesData
+        .add(RegularRouteData<T>(path, fromGoRouterState, children: children));
   }
 }
 
 class RegularRouteData<T extends Route> {
-  const RegularRouteData(this.path, this.fromGoRouterState, {this.children = const []});
+  const RegularRouteData(this.path, this.fromGoRouterState,
+      {this.children = const []});
 
   Type get type => T;
 
@@ -162,11 +185,14 @@ class RegularRouteData<T extends Route> {
   }
 }
 
-typedef FileRouterRedirect<T extends Route> = FutureOr<Route?> Function(BuildContext, T);
+typedef FileRouterRedirect<T extends Route> = FutureOr<Route?> Function(
+    BuildContext, T);
 
-GoRouterRedirect getRedirect<T extends Route>(FileRouterRedirect<T> fileRouterRedirect) {
+GoRouterRedirect getRedirect<T extends Route>(
+    FileRouterRedirect<T> fileRouterRedirect) {
   return (BuildContext context, GoRouterState state) async {
-    final newRoute = await fileRouterRedirect(context, GlobalRouter().getRoute<T>(state));
+    final newRoute =
+        await fileRouterRedirect(context, GlobalRouter().getRoute<T>(state));
     if (newRoute != null) {
       GlobalRouter().route = newRoute;
     }
@@ -175,21 +201,26 @@ GoRouterRedirect getRedirect<T extends Route>(FileRouterRedirect<T> fileRouterRe
 }
 
 typedef FileRouterErrorBuilder = Widget Function(BuildContext, Route);
-GoRouterWidgetBuilder getErrorBuilder(FileRouterErrorBuilder fileRouterErrorBuilder) {
+GoRouterWidgetBuilder getErrorBuilder(
+    FileRouterErrorBuilder fileRouterErrorBuilder) {
   return (BuildContext context, GoRouterState state) {
     final route = GlobalRouter().currentRoute(state);
     return fileRouterErrorBuilder(context, route);
   };
 }
 
-String createLocation(String relativeUrl, List<QueryParam> queryParams, Route? previous) {
-  String topQueryString = queryParams.map((queryParam) => "${queryParam.name}=${queryParam.value}").join("&");
+String createLocation(
+    String relativeUrl, List<QueryParam> queryParams, Route? previous) {
+  String topQueryString = queryParams
+      .map((queryParam) => "${queryParam.name}=${queryParam.value}")
+      .join("&");
   if (previous == null) {
     final queryString = topQueryString.isNotEmpty ? "?$topQueryString" : "";
     return "$relativeUrl$queryString";
   } else {
     final parentRelativeUrl = previous.location.split("?")[0];
-    final parentQueryString = previous.location.substring(parentRelativeUrl.length);
+    final parentQueryString =
+        previous.location.substring(parentRelativeUrl.length);
     String queryString = "";
     if (topQueryString.isNotEmpty) {
       queryString = "?$topQueryString${parentQueryString.replaceAll("?", "&")}";
@@ -237,7 +268,8 @@ class FileRouter extends GoRouter {
     return go(route.location, extra: route);
   }
 
-  Future<T?> pushRoute<T extends Object?, R extends Route>(R route, BuildContext context) {
+  Future<T?> pushRoute<T extends Object?, R extends Route>(
+      R route, BuildContext context) {
     GlobalRouter().route = route;
     return push(route.location);
   }
@@ -327,7 +359,8 @@ abstract class Converter<T> {
   T fromUrlEncoding(String data);
 }
 
-T fromUrlEncoding<T>(List<Converter> customConverters, String? data, {T? defaultValue}) {
+T fromUrlEncoding<T>(List<Converter> customConverters, String? data,
+    {T? defaultValue}) {
   switch ((data, defaultValue)) {
     case (null, null):
       return null as T;
@@ -340,7 +373,8 @@ T fromUrlEncoding<T>(List<Converter> customConverters, String? data, {T? default
             return converter.fromUrlEncoding(data);
           }
         }
-        throw Exception("fromUrlEncoding could not find a converter for the type $T");
+        throw Exception(
+            "fromUrlEncoding could not find a converter for the type $T");
       }
   }
   throw Exception("the arguments given to fromUrlEncoding are incorrect");
@@ -362,7 +396,8 @@ String toUrlEncoding<T>(List<Converter> customConverters, T data) {
   throw Exception("toUrlEncoding could not find a converter for the type $T");
 }
 
-void addQueryParam<T>(List<Converter> customConverters, String name, T? data, List<QueryParam> queryParams) {
+void addQueryParam<T>(List<Converter> customConverters, String name, T? data,
+    List<QueryParam> queryParams) {
   if (data != null) {
     queryParams.add(QueryParam(name, toUrlEncoding<T>(customConverters, data)));
   }
@@ -398,7 +433,8 @@ class BoolConverter implements Converter<bool> {
     } else if (data == "false") {
       return false;
     }
-    throw Exception("to convert from string to bool the string must be true or false");
+    throw Exception(
+        "to convert from string to bool the string must be true or false");
   }
 
   @override
